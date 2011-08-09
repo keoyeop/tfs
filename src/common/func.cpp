@@ -18,6 +18,7 @@
 #include "func.h"
 #include "error_msg.h"
 #include <tbsys.h>
+using namespace std;
 
 namespace tfs
 {
@@ -158,48 +159,45 @@ namespace tfs
     }
 
     // ip is local addr
-    int Func::is_local_addr(const uint32_t ip)
+    bool Func::is_local_addr(const uint32_t ip)
     {
-      int fd, intrface;
+      int32_t intrface = 0;
       struct ifreq buf[16];
       struct ifconf ifc;
+      bool bret = false;
 
-      if ((fd = socket(AF_INET, SOCK_DGRAM, 0)) <= 0)
+      int32_t fd = socket(AF_INET, SOCK_DGRAM, 0);
+      if (fd > 0)
       {
-        return TFS_SUCCESS;
-      }
-
-      ifc.ifc_len = sizeof(buf);
-      ifc.ifc_buf = (caddr_t) buf;
-      if (ioctl(fd, SIOCGIFCONF, (char *) &ifc))
-      {
+        ifc.ifc_len = sizeof(buf);
+        ifc.ifc_buf = (caddr_t) buf;
+        if (0 == ioctl(fd, SIOCGIFCONF, (char *) &ifc))
+        {
+          intrface = ifc.ifc_len / sizeof(struct ifreq);
+          while (intrface-- > 0)
+          {
+            if (ioctl(fd, SIOCGIFFLAGS, (char *) &buf[intrface]))
+            {
+              continue;
+            }
+            if (buf[intrface].ifr_flags & IFF_LOOPBACK)
+              continue;
+            if (!(buf[intrface].ifr_flags & IFF_UP))
+              continue;
+            if (ioctl(fd, SIOCGIFADDR, (char *) &buf[intrface]))
+            {
+              continue;
+            }
+            if (((struct sockaddr_in *) (&buf[intrface].ifr_addr))->sin_addr.s_addr == ip)
+            {
+              bret = true;
+              break;
+            }
+          }
+        }
         close(fd);
-        return TFS_SUCCESS;
       }
-
-      intrface = ifc.ifc_len / sizeof(struct ifreq);
-      while (intrface-- > 0)
-      {
-        if (ioctl(fd, SIOCGIFFLAGS, (char *) &buf[intrface]))
-        {
-          continue;
-        }
-        if (buf[intrface].ifr_flags & IFF_LOOPBACK)
-          continue;
-        if (!(buf[intrface].ifr_flags & IFF_UP))
-          continue;
-        if (ioctl(fd, SIOCGIFADDR, (char *) &buf[intrface]))
-        {
-          continue;
-        }
-        if (((struct sockaddr_in *) (&buf[intrface].ifr_addr))->sin_addr.s_addr == ip)
-        {
-          close(fd);
-          return 1;
-        }
-      }
-      close(fd);
-      return TFS_SUCCESS;
+      return bret;
     }
 
     // set local ip
@@ -306,11 +304,30 @@ namespace tfs
     }
 
     //  port + inc
-    uint64_t Func::addr_inc_port(const uint64_t ipport, const int32_t inc)
+    /*uint64_t Func::addr_inc_port(const uint64_t ipport, const int32_t inc)
     {
       IpAddr* adr = (IpAddr *) (&ipport);
       adr->port_ += inc;
       return ipport;
+    }*/
+
+    uint64_t Func::get_host_ip(const char *s)
+    {
+     char addr[100];
+     strncpy(addr, s, 100);
+     addr[99] = '\0';
+     char* pos = strchr(addr, ':');
+
+     if (pos)
+     {
+         *pos++ = '\0';
+     }
+     else
+     {
+       return 0;
+     }
+
+     return Func::str_to_addr(addr, atoi(pos));
     }
 
     // convert to lower
@@ -360,7 +377,7 @@ namespace tfs
       return (crc);
     }
 
-    std::string Func::format_size(const int64_t c)
+    string Func::format_size(const int64_t c)
     {
       char s[128];
       double x = c;
@@ -394,7 +411,7 @@ namespace tfs
       return (t.tv_sec * 1000000LL + t.tv_usec);
     }
 
-    std::string Func::time_to_str(time_t t, int f)
+    string Func::time_to_str(time_t t, int f)
     {
       char s[128];
       struct tm *tm = localtime((const time_t*) &t);
@@ -415,7 +432,7 @@ namespace tfs
     {
       if (len <= 0 || len > TFS_MALLOC_MAX_SIZE)
       {
-        TBSYS_LOG(ERROR, "allocate to large memory: len(%u) > maxlen(%u)", len, TFS_MALLOC_MAX_SIZE);
+        TBSYS_LOG(ERROR, "allocate to large memory: len: %u > maxlen: %u", len, TFS_MALLOC_MAX_SIZE);
         return NULL;
       }
       if (data == NULL)
@@ -429,10 +446,11 @@ namespace tfs
     }
 
     // sleep
-    void Func::sleep(const float f_heart_interval, const int32_t* stop)
+    void Func::sleep(const float f_heart_interval, bool& stop)
     {
+      TBSYS_LOG(DEBUG, "stop: %d", stop);
       int32_t heart_interval = static_cast<int32_t>(((f_heart_interval + 0.01) * 10));
-      while ((*stop) == 0 && heart_interval > 0)
+      while (!stop && heart_interval > 0)
       {
         usleep(100000);
         heart_interval--;
@@ -592,6 +610,81 @@ namespace tfs
 
       return pid;
     }
+
+    void Func::hex_dump(const void* data, const int32_t size, 
+        const bool char_type /*= true*/, const int32_t log_level /*= TBSYS_LOG_LEVEL_DEBUG*/)
+    {
+      if (TBSYS_LOGGER._level < log_level) return;
+      /* dumps size bytes of *data to stdout. Looks like:
+       * [0000] 75 6E 6B 6E 6F 77 6E 20
+       * 30 FF 00 00 00 00 39 00 unknown 0.....9.
+       * (in a single line of course)
+       */
+
+      unsigned const char *p = (unsigned char*)data;
+      unsigned char c = 0;
+      int n = 0;
+      char bytestr[4] = {0};
+      char addrstr[10] = {0};
+      char hexstr[ 16*3 + 5] = {0};
+      char charstr[16*1 + 5] = {0};
+
+      for(n = 1; n <= size; n++) 
+      {
+        if (n%16 == 1) 
+        {
+          /* store address for this line */
+          snprintf(addrstr, sizeof(addrstr), "%.4x",
+              (int)((unsigned long)p-(unsigned long)data) );
+        }
+
+        c = *p;
+        if (isprint(c) == 0) 
+        {
+          c = '.';
+        }
+
+        /* store hex str (for left side) */
+        snprintf(bytestr, sizeof(bytestr), "%02X ", *p);
+        strncat(hexstr, bytestr, sizeof(hexstr)-strlen(hexstr)-1); 
+
+        /* store char str (for right side) */
+        snprintf(bytestr, sizeof(bytestr), "%c", c);
+        strncat(charstr, bytestr, sizeof(charstr)-strlen(charstr)-1);
+
+        if (n % 16 == 0)
+        { 
+          /* line completed */
+          if (char_type) 
+            TBSYS_LOGGER.logMessage(TBSYS_LOG_NUM_LEVEL(log_level), "[%4.4s]   %-50.50s  %s\n", 
+                addrstr, hexstr, charstr);
+          else 
+            TBSYS_LOGGER.logMessage(TBSYS_LOG_NUM_LEVEL(log_level), "[%4.4s]   %-50.50s\n", 
+                addrstr, hexstr);
+          hexstr[0] = 0;
+          charstr[0] = 0;
+        } 
+        else if(n % 8 == 0) 
+        {
+          /* half line: add whitespaces */
+          strncat(hexstr, "  ", sizeof(hexstr)-strlen(hexstr)-1);
+          strncat(charstr, " ", sizeof(charstr)-strlen(charstr)-1);
+        }
+        p++; /* next byte */
+      }
+
+      if (strlen(hexstr) > 0) 
+      {
+        /* print rest of buffer if not empty */
+        if (char_type) 
+          TBSYS_LOGGER.logMessage(TBSYS_LOG_NUM_LEVEL(log_level), "[%4.4s]   %-50.50s  %s\n", 
+              addrstr, hexstr, charstr);
+        else 
+          TBSYS_LOGGER.logMessage(TBSYS_LOG_NUM_LEVEL(log_level), "[%4.4s]   %-50.50s\n", 
+              addrstr, hexstr);
+      }
+    }
+ 
 
   }
 }

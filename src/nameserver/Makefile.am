@@ -1,23 +1,36 @@
-AM_CPPFLAGS=-I$(top_srcdir)/src\
-	    -I$(TBLIB_ROOT)/include/tbsys\
-	    -I$(TBLIB_ROOT)/include/tbnet
+#AM_CPPFLAGS=-fprofile-arcs -ftest-coverage -Wall -I$(top_srcdir)/src
+AM_CPPFLAGS=-Wall -I$(top_srcdir)/src\
+            -I$(TBLIB_ROOT)/include/tbsys\
+            -I$(TBLIB_ROOT)/include/tbnet
 
-AM_LDFLAGS=-lrt -lpthread -ldl
+#AM_LDFLAGS=-lz -lrt -lpthread -ldl -lgcov
+AM_LDFLAGS=-lz -lrt -lpthread -ldl
+
 LDADD=$(top_builddir)/src/message/libtfsmessage.a \
       $(top_builddir)/src/common/libtfscommon.a\
       $(TBLIB_ROOT)/lib/libtbnet.a \
       $(TBLIB_ROOT)/lib/libtbsys.a
 
+noinst_LIBRARIES=libnameserver.a
+
+NAMESERVER_SOURCE_LIST_HEADER=block_chunk.h block_collect.h block_id_factory.h\
+	client_request_server.h gc.h global_factory.h heart_manager.h layout_manager.h\
+	lease_clerk.h nameserver.h ns_define.h oplog.h oplog_sync_manager.h server_collect.h\
+	strategy.h
+
+NAMSERVER_SOURCE_LIST=ns_define.cpp nameserver.cpp gc.cpp block_chunk.cpp\
+	block_collect.cpp server_collect.cpp strategy.cpp\
+	task.cpp global_factory.cpp  lease_clerk.cpp\
+	oplog.cpp block_id_factory.cpp oplog_sync_manager.cpp\
+	heart_manager.cpp layout_manager.cpp client_request_server.cpp\
+	$(NAMESERVER_SOURCE_LIST_HEADER)
+
+
+libnameserver_a_SOURCES=$(NAMSERVER_SOURCE_LIST)
+libnameserver_a_LIBFLAGS=$(AM_LDFLAGS)
+
 bin_PROGRAMS = nameserver
-nameserver_SOURCES= block_chunk.cpp layout_manager.cpp compact.cpp\
-		    heart_manager.cpp lease_clerk.cpp meta_manager.cpp\
-		    file_system_image.cpp service.cpp oplog.cpp \
-		    oplog_sync_manager.cpp redundant.cpp replicate.cpp\
-		    scanner_manager.cpp strategy.cpp nameserver.cpp\
-		    block_chunk.h layout_manager.h compact.h \
-		    heart_manager.h lease_clerk.h meta_manager.h \
-		    file_system_image.h service.h oplog.h \
-		    oplog_sync_manager.h redundant.h replicate.h \
-		    scanner_manager.h strategy.h nameserver.h \
-		    block_collect.h ns_define.h server_collect.h \
-		    meta_scanner.h proactor_data_pipe.h data_container.h
+
+nameserver_SOURCES=$(NAMSERVER_SOURCE_LIST) service.cpp
+
+

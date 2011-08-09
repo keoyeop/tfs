@@ -26,6 +26,7 @@
 using namespace KFS;
 using namespace tfs::client;
 using namespace tfs::common;
+using namespace std;
 
 char global_write_buf[BUFFER_SIZE];
 
@@ -63,7 +64,7 @@ void* write_worker(void* arg)
 	{
 		return NULL;
 	}
-  std::set<std::string> file_name_set;
+  set<std::string> file_name_set;
 
   char* data = new char[param.max_size_];
   memset(data, 0, param.max_size_);

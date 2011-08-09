@@ -16,7 +16,7 @@
 #ifndef TFS_COMMON_FILE_QUEUE_H_
 #define TFS_COMMON_FILE_QUEUE_H_
 
-#include "define.h"
+#include "internal.h"
 #include <tbsys.h>
 
 namespace tfs
@@ -94,13 +94,13 @@ namespace tfs
         int iret = write_header();
         if (iret != TFS_SUCCESS)
         {
-          TBSYS_LOG(ERROR, "write queue information header error, iret(%d)", iret);
+          TBSYS_LOG(ERROR, "write queue information header error, iret: %d", iret);
           return iret;
         }
         iret = open_read_file();
         if (iret != TFS_SUCCESS)
         {
-          TBSYS_LOG(ERROR, "open file failed, iret(%d)", iret);
+          TBSYS_LOG(ERROR, "open file failed, iret: %d", iret);
         }
         return iret;
       }

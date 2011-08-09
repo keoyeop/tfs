@@ -19,7 +19,7 @@
 #define TFS_DATASERVER_DATAHANDLE_H_
 
 #include "physical_block.h"
-#include "common/interval.h"
+#include "common/internal.h"
 
 namespace tfs
 {
@@ -29,7 +29,7 @@ namespace tfs
     class DataHandle
     {
       public:
-        DataHandle(LogicBlock* logic_blk) :
+        explicit DataHandle(LogicBlock* logic_blk) :
           logic_block_(logic_blk)
         {
         }

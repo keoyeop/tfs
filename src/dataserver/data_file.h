@@ -23,7 +23,7 @@
 #include <ext/hash_map>
 #include <tbsys.h>
 #include "common/config_item.h"
-#include "common/config.h"
+//#include "common/config.h"
 #include "dataserver_define.h"
 
 namespace tfs
@@ -34,7 +34,7 @@ namespace tfs
     class DataFile
     {
       public:
-        DataFile(uint64_t fn);
+        explicit DataFile(uint64_t fn);
         DataFile(uint64_t fn, char* path);
         ~DataFile();
 

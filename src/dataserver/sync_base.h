@@ -11,7 +11,7 @@
  * Authors:
  *   duolong <duolong@taobao.com>
  *      - initial release
- *   zongdai <zongdai@taobao.com> 
+ *   zongdai <zongdai@taobao.com>
  *      - modify 2010-04-23
  *
  */
@@ -23,15 +23,12 @@
 #include <fcntl.h>
 #include <queue>
 #include <errno.h>
-
-#include "sync_backup.h"
-#include "common/interval.h"
-#include "common/file_queue.h"
-#include "common/file_queue_thread.h"
-#include "message/message_factory.h"
-#include "message/client.h"
 #include <Monitor.h>
 #include <Mutex.h>
+
+#include "sync_backup.h"
+#include "common/file_queue.h"
+#include "common/file_queue_thread.h"
 
 namespace tfs
 {
@@ -41,7 +38,7 @@ namespace tfs
     class SyncBase
     {
       public:
-        SyncBase(const int32_t type);
+        explicit SyncBase(const int32_t type);
         ~SyncBase();
         void stop();
 
@@ -50,16 +47,15 @@ namespace tfs
         int disable_log();
         void set_pause(const int32_t v);
         int reload_slave_ip();
+        int run_sync_mirror();
 
-        static void* do_sync_mirror(void* args);
         static int do_second_sync(const void* data, const int64_t len, const int32_t thread_index, void* arg);
 
       private:
         SyncBase();
         DISALLOW_COPY_AND_ASSIGN(SyncBase);
 
-        static const int32_t SYNC_WORK_DIR = 256;
-        int32_t stop_;
+        bool stop_;
         int32_t pause_;
         int32_t need_sync_;
         int32_t need_sleep_;
@@ -68,9 +64,9 @@ namespace tfs
         common::FileQueue* second_file_queue_;
         common::FileQueueThread* second_file_queue_thread_;
         SyncBackup* backup_;
+        std::string mirror_dir_;
 
       private:
-        int run_sync_mirror();
         int do_sync(const char* data, const int32_t len, const bool second = false);
     };
 

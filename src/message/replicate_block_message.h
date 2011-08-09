@@ -15,74 +15,64 @@
  */
 #ifndef TFS_MESSAGE_REPLICATEBLOCKMESSAGE_H_
 #define TFS_MESSAGE_REPLICATEBLOCKMESSAGE_H_
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string>
-#include <errno.h>
-
-#include "common/interval.h"
-#include "message.h"
+#include "common/base_packet.h"
 
 namespace tfs
 {
   namespace message
   {
-    // ReplicateBlock
-    enum CommandStatus
+    /*enum CommandStatus
     {
       COMMAND_REPLICATE = 1,
       COMMAND_REPL_COMPLETE,
       COMMAND_REPL_FAILURE,
       COMMAND_CLIENT_REPL = 100
-    };
-
-    class ReplicateBlockMessage: public Message
+    };*/
+    class ReplicateBlockMessage: public common::BasePacket 
     {
-    public:
-      ReplicateBlockMessage();
-      virtual ~ReplicateBlockMessage();
-      virtual int parse(char* data, int32_t len);
-      virtual int build(char* data, int32_t len);
-      virtual int32_t message_length();
-      virtual char* get_name();
-      static Message* create(const int32_t type);
-
-      inline void set_command(const int32_t command)
-      {
-        command_ = command;
-      }
-
-      inline int32_t get_command() const
-      {
-        return command_;
-      }
-
-      inline void set_expire(const int32_t expire)
-      {
-        expire_ = expire;
-      }
-
-      inline int32_t get_expire() const
-      {
-        return expire_;
-      }
-
-      inline void set_repl_block(const common::ReplBlock* repl_block)
-      {
-        memcpy(&repl_block_, repl_block, sizeof(common::ReplBlock));
-      }
-
-      inline const common::ReplBlock* get_repl_block() const
-      {
-        return &repl_block_;
-      }
-
-    protected:
-      int32_t command_;
-      int32_t expire_;
-      common::ReplBlock repl_block_;
+      public:
+        ReplicateBlockMessage();
+        virtual ~ReplicateBlockMessage();
+        virtual int serialize(common::Stream& output) const ;
+        virtual int deserialize(common::Stream& input);
+        int deserialize(const char* data, const int64_t data_len, int64_t& pos);
+        virtual int64_t length() const;
+        void dump(void) const;
+        inline void set_command(const int32_t command)
+        {
+          command_ = command;
+        }
+        inline int32_t get_command() const
+        {
+          return command_;
+        }
+        inline common::ReplicateBlockMoveFlag get_move_flag() const
+        {
+          return static_cast<common::ReplicateBlockMoveFlag>(repl_block_.is_move_);
+        }
+        inline void set_expire(const int32_t expire)
+        {
+          expire_ = expire;
+        }
+        inline int32_t get_expire() const
+        {
+          return expire_;
+        }
+        inline void set_repl_block(const common::ReplBlock* repl_block)
+        {
+          if (NULL != repl_block)
+          {
+            repl_block_ = *repl_block;
+          }
+        }
+        inline const common::ReplBlock* get_repl_block() const
+        {
+          return &repl_block_;
+        }
+      protected:
+        int32_t command_;
+        int32_t expire_;
+        common::ReplBlock repl_block_;
     };
   }
 }

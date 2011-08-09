@@ -17,17 +17,18 @@
  *      - modify 2010-04-23
  *
  */
+#include <Memory.hpp>
 #include "block_checker.h"
 #include "blockfile_manager.h"
-#include <Memory.hpp>
+#include "common/func.h"
 
-using namespace std;
 namespace tfs
 {
   namespace dataserver
   {
     using namespace common;
     using namespace tbutil;
+    using namespace std;
 
     BlockChecker::~BlockChecker()
     {

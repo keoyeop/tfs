@@ -19,7 +19,7 @@
 #define TFS_DATASERVER_INDEXHANDLE_H_
 
 #include "mmap_file_op.h"
-#include "common/interval.h"
+#include "common/internal.h"
 
 namespace tfs
 {
@@ -58,10 +58,10 @@ namespace tfs
         ~IndexHandle();
 
         // create blockfile ,write index header and buckets info into the file
-        int create(const uint32_t logic_block_id, const int32_t cfg_bucket_size, const MMapOption map_option,
+        int create(const uint32_t logic_block_id, const int32_t cfg_bucket_size, const common::MMapOption map_option,
             const DirtyFlag dirty_flag);
         // load blockfile into memory, check block info
-        int load(const uint32_t logic_block_id, const int32_t bucket_size, const MMapOption map_option);
+        int load(const uint32_t logic_block_id, const int32_t bucket_size, const common::MMapOption map_option);
         // clear memory map, delete blockfile
         int remove(const uint32_t logic_block_id);
         // flush file to disk
@@ -70,6 +70,8 @@ namespace tfs
 
         // find the next available key greater than key
         int find_avail_key(uint64_t& key);
+        // update next available key
+        void reset_avail_key(uint64_t key);
         // merge the version info from ns and local
         int check_block_version(int32_t& remote_version);
         int reset_block_version();

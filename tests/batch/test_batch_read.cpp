@@ -24,6 +24,7 @@
 using namespace KFS;
 using namespace tfs::client;
 using namespace tfs::common;
+using namespace std;
 
 static int32_t m_stop = 0;
 void sign_handler(int32_t sig)
@@ -77,7 +78,7 @@ void* read_worker(void* arg)
   int64_t time_consumed = 0, min_time_consumed = 0, max_time_consumed = 0, accumlate_time_consumed = 0;
 
   // 1M file number, each 18 bit, total 18M
-  std::vector < std::string > write_file_list;
+  vector < std::string > write_file_list;
   while (fgets(name_buf, BUFLEN, input_fd))
   {
     ssize_t endpos = strlen(name_buf) - 1;
@@ -93,8 +94,8 @@ void* read_worker(void* arg)
   //random read
   if (param.random_)
   {
-    std::vector<std::string>::iterator start = write_file_list.begin();
-    std::vector<std::string>::iterator end = write_file_list.end();
+    vector<std::string>::iterator start = write_file_list.begin();
+    vector<std::string>::iterator end = write_file_list.end();
     random_shuffle(start, end);
   }
 
@@ -109,7 +110,7 @@ void* read_worker(void* arg)
     image_scale_random = true;
   }
 
-  std::vector<std::string>::iterator vit = write_file_list.begin();
+  vector<std::string>::iterator vit = write_file_list.begin();
   for (; vit != write_file_list.end(); vit++)
   {
     if (m_stop)

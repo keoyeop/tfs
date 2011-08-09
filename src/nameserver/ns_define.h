@@ -22,40 +22,19 @@
 
 #include <Mutex.h>
 #include <tbsys.h>
-#include "common/interval.h"
+#include "common/internal.h"
 #include "common/func.h"
+#include "common/lock.h"
+#include "common/parameter.h"
+#include "common/new_client.h"
+
+//#define TFS_NS_GTEST
+//#define TFS_NS_DEBUG
 
 namespace tfs
 {
   namespace nameserver
   {
-    struct NsGlobalInfo
-    {
-      NsGlobalInfo() :
-        use_capacity_(0), total_capacity_(0), total_block_count_(0), total_load_(0), max_load_(1), max_block_count_(1),
-            alive_server_count_(0)
-      {
-
-      }
-
-      NsGlobalInfo(uint64_t use_capacity, uint64_t totoal_capacity, uint64_t total_block_count, int32_t total_load,
-          int32_t max_load, int32_t max_block_count, int32_t alive_server_count) :
-        use_capacity_(use_capacity), total_capacity_(totoal_capacity), total_block_count_(total_block_count),
-            total_load_(total_load), max_load_(max_load), max_block_count_(max_block_count), alive_server_count_(
-                alive_server_count)
-      {
-
-      }
-
-      int64_t use_capacity_;
-      int64_t total_capacity_;
-      int64_t total_block_count_;
-      int32_t total_load_;
-      int32_t max_load_;
-      int32_t max_block_count_;
-      int32_t alive_server_count_;
-    };
-
     enum NsRole
     {
       NS_ROLE_NONE = 0x00,
@@ -91,12 +70,67 @@ namespace tfs
       NS_SWITCH_FLAG_NO = 0x00,
       NS_SWITCH_FLAG_YES
     };
+    class LayoutManager;
+    class GCObject
+    {
+    public:
+      explicit GCObject(const time_t now):
+        dead_time_(now) {}
+      virtual ~GCObject() {}
+      virtual void callback(LayoutManager* /**manager*/){}
+      inline void free(){ delete this;}
+      inline void set_dead_time(const time_t now = time(NULL)) {dead_time_ = now;}
+      inline bool can_be_clear(const time_t now = time(NULL)) const
+      {
+        return now >= (dead_time_ + common::SYSPARAM_NAMESERVER.object_clear_max_time_);
+      }
+      inline bool is_dead(const time_t now = time(NULL)) const
+      {
+        return now >= (dead_time_ + common::SYSPARAM_NAMESERVER.object_dead_max_time_);
+      }
+    private:
+      time_t dead_time_;
+    };
 
-    struct NsRuntimeGlobalInformation: public tbutil::Mutex
+    struct NsGlobalStatisticsInfo : public common::RWLock
+    {
+      NsGlobalStatisticsInfo();
+      NsGlobalStatisticsInfo(uint64_t use_capacity, uint64_t totoal_capacity, uint64_t total_block_count, int32_t total_load,
+          int32_t max_load, int32_t max_block_count, int32_t alive_server_count);
+			void update(const common::DataServerStatInfo& info, const bool is_new = true);
+      void update(const NsGlobalStatisticsInfo& info);
+      inline int64_t get_elect_seq_num()
+      {
+        common::RWLock::Lock lock(*this, common::READ_LOCKER);
+        return elect_seq_num_;
+      }
+      inline int64_t calc_elect_seq_num_average()
+      {
+        common::RWLock::Lock lock(*this, common::READ_LOCKER);
+        return elect_seq_num_ <= 0 ? 1 : elect_seq_num_ / alive_server_count_ <= 0 ? 1 : alive_server_count_;
+      }
+
+      static NsGlobalStatisticsInfo& instance();
+      void dump();
+      volatile int64_t elect_seq_num_;
+      volatile int64_t use_capacity_;
+      volatile int64_t total_capacity_;
+      volatile int64_t total_block_count_;
+      int32_t total_load_;
+      int32_t max_load_;
+      int32_t max_block_count_;
+      volatile int32_t alive_server_count_;
+      static const int8_t ELECT_SEQ_NO_INITIALIZE;
+      static NsGlobalStatisticsInfo instance_;
+    };
+
+    struct NsRuntimeGlobalInformation : public tbutil::Mutex
     {
       uint64_t owner_ip_port_;
       uint64_t other_side_ip_port_;
-      time_t switch_time_;
+      int64_t switch_time_;
+      int64_t last_owner_check_time_;
+      int64_t last_push_owner_check_packet_time_;
       uint32_t vip_;
       NsDestroyFlag destroy_flag_;
       NsRole owner_role_;
@@ -104,39 +138,26 @@ namespace tfs
       NsStatus owner_status_;
       NsStatus other_side_status_;
       NsSyncDataFlag sync_oplog_flag_;
-      tbutil::Time last_owner_check_time_;
-      tbutil::Time last_push_owner_check_packet_time_;
+      void initialize();
       void dump(int32_t level, const char* file = __FILE__, const int32_t line = __LINE__, const char* function =
-          __FUNCTION__) const
-      {
-        TBSYS_LOGGER.logMessage(
-            level,
-            file,
-            line,
-            function,
-            "owner ip port(%s), other side ip port(%s), switch time(%s), vip(%s)\
-,destroy flag(%s), owner role(%s), other side role(%s), owner status(%s), other side status(%s)\
-,sync oplog flag(%s), last owner check time(%s), last push owner check packet time(%s)",
-            tbsys::CNetUtil::addrToString(owner_ip_port_).c_str(),
-            tbsys::CNetUtil::addrToString(other_side_ip_port_).c_str(),
-            common::Func::time_to_str(switch_time_).c_str(), tbsys::CNetUtil::addrToString(vip_).c_str(), destroy_flag_
-                == NS_DESTROY_FLAGS_NO ? "no" : destroy_flag_ == NS_DESTROY_FLAGS_YES ? "yes" : "unknow", owner_role_
-                == NS_ROLE_MASTER ? "master" : owner_role_ == NS_ROLE_SLAVE ? "slave" : "unknow", other_side_role_
-                == NS_ROLE_MASTER ? "master" : other_side_role_ == NS_ROLE_SLAVE ? "slave" : "unknow", owner_status_
-                == NS_STATUS_UNINITIALIZE ? "uninitialize"
-                : owner_status_ == NS_STATUS_OTHERSIDEDEAD ? "other side dead" : owner_status_
-                    == NS_STATUS_ACCEPT_DS_INFO ? "accepct ds info"
-                    : owner_status_ == NS_STATUS_INITIALIZED ? "initialize" : "unknow", other_side_status_
-                == NS_STATUS_UNINITIALIZE ? "uninitialize"
-                : other_side_status_ == NS_STATUS_OTHERSIDEDEAD ? "other side dead" : other_side_status_
-                    == NS_STATUS_ACCEPT_DS_INFO ? "accepct ds info"
-                    : other_side_status_ == NS_STATUS_INITIALIZED ? "initialize" : "unknow", sync_oplog_flag_
-                == NS_SYNC_DATA_FLAG_NONE ? "none" : sync_oplog_flag_ == NS_SYNC_DATA_FLAG_NO ? "no" : sync_oplog_flag_
-                == NS_SYNC_DATA_FLAG_READY ? "ready" : sync_oplog_flag_ == NS_SYNC_DATA_FLAG_YES ? "yes" : "unknow",
-            last_owner_check_time_.toDateTime().c_str(), last_push_owner_check_packet_time_.toDateTime().c_str());
-      }
+          __FUNCTION__) const;
+      static NsRuntimeGlobalInformation& instance();
+      static NsRuntimeGlobalInformation instance_;
     };
-  }
-}
+
+    class BlockCollect;
+    class ServerCollect;
+    typedef __gnu_cxx ::hash_map<uint64_t, nameserver::ServerCollect*, __gnu_cxx ::hash<uint64_t> > SERVER_MAP;
+    typedef SERVER_MAP::iterator SERVER_MAP_ITER;
+    typedef __gnu_cxx ::hash_map<uint32_t, nameserver::BlockCollect*, __gnu_cxx ::hash<uint32_t> > BLOCK_MAP;
+    typedef BLOCK_MAP::iterator BLOCK_MAP_ITER;
+
+    extern int ns_async_callback(common::NewClient* client);
+    extern void print_servers(const std::vector<ServerCollect*>& servers, std::string& result);
+    extern void print_servers(const std::vector<uint64_t>& servers, std::string& result);
+    extern void print_blocks(const std::vector<uint32_t>& blocks, std::string& result);
+
+  }/** nameserver **/
+}/** tfs **/
 
 #endif 

@@ -14,9 +14,6 @@
  *
  */
 #include "reload_message.h"
-
-using namespace tfs::common;
-
 namespace tfs
 {
   namespace message
@@ -24,59 +21,27 @@ namespace tfs
     ReloadConfigMessage::ReloadConfigMessage() :
       flag_(0)
     {
-      _packetHeader._pcode = RELOAD_CONFIG_MESSAGE;
-    }
-
-    ReloadConfigMessage::ReloadConfigMessage(const int32_t flag)
-    {
-      _packetHeader._pcode = RELOAD_CONFIG_MESSAGE;
-      set_message(flag);
-    }
-
-    void ReloadConfigMessage::set_message(const int32_t flag)
-    {
-      flag_ = flag;
+      _packetHeader._pcode = common::RELOAD_CONFIG_MESSAGE;
     }
 
     ReloadConfigMessage::~ReloadConfigMessage()
     {
+
     }
 
-    int ReloadConfigMessage::parse(char* data, int32_t len)
+    int ReloadConfigMessage::deserialize(common::Stream& input)
     {
-      if (get_int32(&data, &len, &flag_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      return TFS_SUCCESS;
+      return input.get_int32(&flag_);
     }
 
-    int32_t ReloadConfigMessage::message_length()
+    int64_t ReloadConfigMessage::length() const
     {
-      int32_t len = INT_SIZE;
-      return len;
+      return common::INT_SIZE;
     }
 
-    int ReloadConfigMessage::build(char* data, int32_t len)
+    int ReloadConfigMessage::serialize(common::Stream& output) const
     {
-      if (set_int32(&data, &len, flag_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-
-      return TFS_SUCCESS;
-    }
-
-    char* ReloadConfigMessage::get_name()
-    {
-      return "reloadconfigmessage";
-    }
-
-    Message* ReloadConfigMessage::create(const int32_t type)
-    {
-      ReloadConfigMessage* req_rc_msg = new ReloadConfigMessage();
-      req_rc_msg->set_message_type(type);
-      return req_rc_msg;
+      return output.set_int32(flag_);
     }
 
     void ReloadConfigMessage::set_switch_cluster_flag(const int32_t flag)

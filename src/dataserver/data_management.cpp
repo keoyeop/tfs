@@ -46,7 +46,7 @@ namespace tfs
       TBSYS_LOG(INFO, "set file number. file number: %" PRI64_PREFIX "u\n", file_number_);
     }
 
-    int DataManagement::init_block_files(const SysParam::FileSystemParam& fs_param)
+    int DataManagement::init_block_files(const FileSystemParameter& fs_param)
     {
       int64_t time_start = tbsys::CTimeUtil::getTime();
       TBSYS_LOG(INFO, "block file load blocks begin. start time: %" PRI64_PREFIX "d\n", time_start);
@@ -75,6 +75,11 @@ namespace tfs
       return BlockFileManager::get_instance()->get_all_logic_block(logic_block_list);
     }
 
+    int64_t DataManagement::get_all_logic_block_size()
+    {
+      return BlockFileManager::get_instance()->get_all_logic_block_size();
+    }
+
     int DataManagement::create_file(const uint32_t block_id, uint64_t& file_id, uint64_t& file_number)
     {
       LogicBlock* logic_block = BlockFileManager::get_instance()->get_logic_block(block_id);
@@ -94,6 +99,10 @@ namespace tfs
               file_id, ret);
           return ret;
         }
+      }
+      else                      // update seq no over current one to avoid overwrite
+      {
+        logic_block->reset_seq_id(file_id);
       }
 
       data_file_mutex_.lock();
@@ -271,7 +280,7 @@ namespace tfs
       return TFS_SUCCESS;
     }
 
-    int DataManagement::read_data(const uint32_t block_id, const uint64_t file_id, const int32_t read_offset,
+    int DataManagement::read_data(const uint32_t block_id, const uint64_t file_id, const int32_t read_offset, const int8_t flag,
         int32_t& real_read_len, char* tmp_data_buffer)
     {
       LogicBlock* logic_block = BlockFileManager::get_instance()->get_logic_block(block_id);
@@ -282,7 +291,7 @@ namespace tfs
       }
 
       int64_t start = tbsys::CTimeUtil::getTime();
-      int ret = logic_block->read_file(file_id, tmp_data_buffer, real_read_len, read_offset);
+      int ret = logic_block->read_file(file_id, tmp_data_buffer, real_read_len, read_offset, flag);
       if (TFS_SUCCESS != ret)
       {
         TBSYS_LOG(ERROR, "blockid: %u read data error, fileid: %" PRI64_PREFIX "u, size: %d, offset: %d, ret: %d",
@@ -341,8 +350,9 @@ namespace tfs
       }
 
       // if mode is 0 and file is not in nomal status, return error.
-      if (0 == finfo.id_ || finfo.id_ != file_id || ((finfo.flag_ & (FI_DELETED | FI_INVALID | FI_CONCEAL)) != 0 && 0
-          == mode))
+      if ((0 == finfo.id_) 
+          || (finfo.id_ != file_id )
+          || ((finfo.flag_ & (FI_DELETED | FI_INVALID | FI_CONCEAL)) != 0 && 0 == mode))
       {
         TBSYS_LOG(WARN,
             "FileInfo parse fail. blockid: %u, fileid: %" PRI64_PREFIX "u, infoid: %" PRI64_PREFIX "u, flag: %d",
@@ -384,7 +394,7 @@ namespace tfs
       return TFS_SUCCESS;
     }
 
-    int DataManagement::unlink_file(const uint32_t block_id, const uint64_t file_id, const int32_t action)
+    int DataManagement::unlink_file(const uint32_t block_id, const uint64_t file_id, const int32_t action, int64_t& file_size)
     {
       LogicBlock* logic_block = BlockFileManager::get_instance()->get_logic_block(block_id);
       if (NULL == logic_block)
@@ -393,7 +403,7 @@ namespace tfs
         return EXIT_NO_LOGICBLOCK_ERROR;
       }
 
-      int ret = logic_block->unlink_file(file_id, action);
+      int ret = logic_block->unlink_file(file_id, action, file_size);
       if (TFS_SUCCESS != ret)
       {
         TBSYS_LOG(ERROR, "del file fail, blockid: %u, fileid: %" PRI64_PREFIX "u, ret: %d", block_id, file_id, ret);

@@ -17,10 +17,9 @@
 #define TFS_DATASERVER_PHYSICALBLOCK_H_
 
 #include <string>
-#include "superblock.h"
 #include "file_op.h"
 #include "dataserver_define.h"
-#include "common/config.h"
+//#include "common/config.h"
 #include "common/config_item.h"
 
 namespace tfs

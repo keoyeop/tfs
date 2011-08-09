@@ -36,31 +36,60 @@ namespace tfs
 {
   namespace nameserver
   {
+    enum OpLogType
+    {
+      OPLOG_TYPE_BLOCK_OP = 0x00,
+      OPLOG_TYPE_REPLICATE_MSG,
+      OPLOG_TYPE_COMPACT_MSG
+    };
 #pragma pack(1)
     struct OpLogHeader
     {
-      uint64_t seqno_;
-      time_t time_;
-      uint8_t cmd_;
-      uint8_t length_;
-      char data_[0];
+      int serialize(char* data, const int64_t data_len, int64_t& pos) const;
+      int deserialize(const char* data, const int64_t data_len, int64_t& pos);
+      int64_t length() const;
+      uint32_t seqno_;
+      uint32_t time_;
+      uint32_t crc_;
+      uint16_t length_;
+      int8_t  type_;
+      int8_t  reserve_;
+      char  data_[0];
     };
     struct OpLogRotateHeader
     {
+      int serialize(char* data, const int64_t data_len, int64_t& pos) const;
+      int deserialize(const char* data, const int64_t data_len, int64_t& pos);
+      int64_t length() const;
+      uint32_t seqno_;
       int32_t rotate_seqno_;
       int32_t rotate_offset_;
     };
 #pragma pack()
-    class OpLog
+ 
+    struct BlockOpLog
+    {
+      int serialize(char* data, const int64_t data_len, int64_t& pos) const;
+      int deserialize(const char* data, const int64_t data_len, int64_t& pos);
+      int64_t length() const;
+      uint32_t seqno_;
+      common::BlockInfo info_;
+      common::VUINT32 blocks_;
+      common::VUINT64 servers_;
+      int8_t cmd_;
+      void dump(void) const;
+    };
+
+   class OpLog
     {
     public:
-      explicit OpLog(const std::string& path, int maxLogSlotsSize = 0x400);
+      OpLog(const std::string& path, const int32_t max_log_slot_size = 0x400);
       virtual ~OpLog();
       int initialize();
       int update_oplog_rotate_header(const OpLogRotateHeader& head);
-      bool finish(time_t now, bool force = false) const;
-      int write(int32_t cmd, const common::BlockInfo* const blk, const common::VUINT64& dsList);
-      inline void reset(time_t t = time(NULL))
+      bool finish(const time_t now, const bool force = false) const;
+      int write(const uint8_t type, const char* const data, const int32_t length);
+      inline void reset(const time_t t = time(NULL))
       {
         last_flush_time_ = t;
         slots_offset_ = 0;
@@ -69,7 +98,7 @@ namespace tfs
       {
         return buffer_;
       }
-      inline int32_t get_slots_offset() const
+      inline int64_t get_slots_offset() const
       {
         return slots_offset_;
       }
@@ -82,12 +111,11 @@ namespace tfs
       const int MAX_LOG_SLOTS_SIZE;
       const int MAX_LOG_BUFFER_SIZE;
     private:
-      tbutil::Mutex mutex_;
       OpLogRotateHeader oplog_rotate_header_;
       std::string path_;
       uint64_t seqno_;
-      time_t last_flush_time_;
-      int32_t slots_offset_;
+      int64_t last_flush_time_;
+      int64_t slots_offset_;
       int32_t fd_;
       char* buffer_;
     private:

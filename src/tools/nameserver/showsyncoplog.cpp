@@ -9,7 +9,7 @@
  * Version: $Id$
  *
  * Authors:
- *   duolong <duolong@taobao.com>
+ *   duanfei <duanfei@taobao.com>
  *      - initial release
  *
  */
@@ -23,94 +23,91 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#include "tbsys.h"
 #include "common/func.h"
 #include "common/file_queue.h"
 #include "nameserver/oplog.h"
 
-using namespace tfs::common;
-using namespace tfs::nameserver;
 using namespace std;
+using namespace tfs;
+using namespace nameserver;
 
-int32_t global_stop = 0x00;
+bool gstop = false;
 
-void signal_handler(int32_t signal)
+void signlHandler(int signal)
 {
-  switch (signal)
+  switch(signal)
   {
-  case SIGINT:
-    global_stop = 0x01;
-    break;
-  default:
-    fprintf(stderr, "[INFO]: occur signal(%d)", signal);
-    break;
+    case SIGINT:
+      gstop = true;
+      break;
+    default:
+      fprintf(stderr, "[INFO]: occur signl(%d)", signal);
+      break;
   }
 }
 
-int print_information(std::string& dir_name, int32_t type = 0x00)
+int print_information(std::string& dir_name, int type = 0x00)
 {
   OpLogRotateHeader header;
   ::memset(&header, 0, sizeof(header));
-  std::string head_path = dir_name + "/rotateheader.dat";
-  int fd = open(head_path.c_str(), O_RDWR, 0600);
+  std::string headPath = dir_name + "/rotateheader.dat";
+  int fd = open(headPath.c_str(), O_RDWR, 0600);
   if (fd < 0)
   {
-    fprintf(stderr, "[ERROR]: open file(%s) failed(%s)\n", head_path.c_str(), strerror(errno));
-    return TFS_ERROR;
+    fprintf(stderr, "[ERROR]: open file(%s) failed(%s)\n", headPath.c_str(), strerror(errno));
+    return EXIT_FAILURE;
   }
-  int ret = read(fd, &header, sizeof(header));
-  if (ret != sizeof(header))
+  int iret = read(fd, &header, sizeof(header));
+  if (iret != sizeof(header))
   {
-    fprintf(stderr, "[ERROR]: read file(%s) failed\n", head_path.c_str());
+    fprintf(stderr, "[ERROR]: read file(%s) failed\n", headPath.c_str());
     ::close(fd);
-    return TFS_ERROR;
+    return EXIT_FAILURE;
   }
   fprintf(stderr, "--------------------------------------------------------------\n");
   fprintf(stderr, "        current rotate information           \n\n");
-  fprintf(stderr, "RotateSeqno:%d  RotateOffset: %d \n\n", header.rotate_seqno_, header.rotate_offset_);
+  fprintf(stderr, "RotateSeqno:%d  RotateOffset: %d \n\n",header.rotate_seqno_, header.rotate_offset_);
   ::close(fd);
 
-  std::string file_queue_path= dir_name + "/header.dat";
-  int q_fd = open(file_queue_path.c_str(), O_RDWR, 0600);
-  if (q_fd < 0)
+  std::string fileQueuePath = dir_name + "/header.dat";
+  int qfd = open(fileQueuePath.c_str(), O_RDWR, 0600);
+  if (qfd < 0)
   {
-    fprintf(stderr, "%s:%d [ERROR]: open file(%s) failed(%s)\n", __FILE__, __LINE__, file_queue_path.c_str(), strerror(
-        errno));
-    return TFS_ERROR;
+    fprintf(stderr, "%s:%d [ERROR]: open file(%s) failed(%s)\n", __FILE__, __LINE__, fileQueuePath.c_str(), strerror(errno));
+    return EXIT_FAILURE;
   }
-  QueueInformationHeader q_head;
-  ::memset(&q_head, 0, sizeof(q_head));
-  if (read(q_fd, &q_head, sizeof(q_head)) != sizeof(q_head))
+  common::QueueInformationHeader qhead;
+  ::memset(&qhead, 0, sizeof(qhead));
+  if (read(qfd, &qhead, sizeof(qhead)) != sizeof(qhead))
   {
-    fprintf(stderr, "%s:%d [ERROR]: read file(%s) failed\n", __FILE__, __LINE__, file_queue_path.c_str());
-    ::close(q_fd);
-    return TFS_ERROR;
+    fprintf(stderr, "%s:%d [ERROR]: read file(%s) failed\n", __FILE__, __LINE__,fileQueuePath.c_str());
+    ::close(qfd);
+    return EXIT_FAILURE;
   }
   fprintf(stderr, "        current synchronization oplog information          \n\n");
-  fprintf(stderr, "ReadSeqno:  %d     ReadOffset: %d  \n", q_head.read_seqno_, q_head.read_offset_);
-  fprintf(stderr, "WriteSeqno: %d     WriteFileSize: %d  \n", q_head.write_seqno_, q_head.write_filesize_);
-  fprintf(stderr, "QueueSize: %d\n", q_head.queue_size_);
-  if (type == 0x00)
+  fprintf(stderr, "ReadSeqno:  %d     ReadOffset: %d  \n", qhead.read_seqno_, qhead.read_offset_);
+  fprintf(stderr, "WriteSeqno: %d     WriteFileSize: %d  \n", qhead.write_seqno_, qhead.write_filesize_);
+  fprintf(stderr, "QueueSize: %d\n", qhead.queue_size_);
+  if ( type == 0x00)
   {
     ostringstream current;
-    int i = 0;
-    for (i = 0; i < FILE_QUEUE_MAX_THREAD_SIZE; i++)
+    for (int32_t i = 0; i < common::FILE_QUEUE_MAX_THREAD_SIZE; i++)
     {
-      current << "     " << i << "              " << q_head.pos_[i].seqno_ << "         " << q_head.pos_[i].offset_ << "\n";
+      current << "     " << i << "              " << qhead.pos_[i].seqno_ <<"         "<< qhead.pos_[i].offset_ <<"\n";
     }
     fprintf(stderr, "Current Process: \n");
     fprintf(stderr, "Thread Number     SeqNo     Offset \n");
     fprintf(stderr, "%s\n", current.str().c_str());
   }
-  ::close(q_fd);
-  return TFS_SUCCESS;
+  ::close(qfd);
+  return EXIT_SUCCESS;
 }
 
 int main(int argc, char *argv[])
 {
-  signal(SIGINT, signal_handler);
+  signal(SIGINT, signlHandler);
   std::string dir_name;
-  int i = 0;
+  int32_t i = 0;
   int32_t count = 0;
   int32_t type = 0x00;
   int32_t interval = 0x01;
@@ -118,27 +115,27 @@ int main(int argc, char *argv[])
   {
     switch (i)
     {
-    case 'f':
-      dir_name = optarg;
-      break;
-    case 'c':
-      count = atoi(optarg);
-      break;
-    case 'i':
-      interval = atoi(optarg);
-      break;
-    case 't':
-      type = atoi(optarg);
-      break;
-    case 'h':
-    default:
-      fprintf(stderr, "Usage: %s -f fileQueueDirPath -t type -c count -i interval\n", argv[0]);
-      fprintf(stderr, "       -f fileQueueDirPath: File Queue directory\n");
-      fprintf(stderr, "       -t type : 0: all 1: not print currnet process information\n");
-      fprintf(stderr, "       -c count: count\n");
-      fprintf(stderr, "       -i interval: interval time\n");
-      fprintf(stderr, "       -h help\n");
-      return TFS_SUCCESS;
+      case 'f':
+        dir_name = optarg;
+        break;
+      case 'c':
+        count = atoi(optarg);
+        break;
+      case 'i':
+        interval = atoi(optarg);
+        break;
+      case 't':
+        type = atoi(optarg);
+        break;
+      case 'h':
+      default:
+        fprintf(stderr, "Usage: %s -f fileQueueDirPath -t type -c count -i interval\n", argv[0]);
+        fprintf(stderr, "       -f fileQueueDirPath: File Queue directory\n");
+        fprintf(stderr, "       -t type : 0: all 1: not print currnet process information\n");
+        fprintf(stderr, "       -c count: count\n");
+        fprintf(stderr, "       -i interval: interval time\n");
+        fprintf(stderr, "       -h help\n");
+        return EXIT_SUCCESS;
     }
   }
   if (dir_name.empty())
@@ -148,28 +145,30 @@ int main(int argc, char *argv[])
     fprintf(stderr, "       -t type : 0: all 1: not print currnt process information\n");
     fprintf(stderr, "       -c count: count\n");
     fprintf(stderr, "       -i interval: interval time\n");
-    return TFS_SUCCESS;
+    return EXIT_SUCCESS;
   }
-  struct stat stat_buf;
-  if (stat(dir_name.c_str(), &stat_buf) != 0)
+  struct stat statbuf;
+  if (stat(dir_name.c_str(), &statbuf) != 0)
   {
     fprintf(stderr, "%s:%d [ERROR]: (%s%s)\n", __FILE__, __LINE__, dir_name.c_str(), strerror(errno));
-    return TFS_SUCCESS;
+    return EXIT_SUCCESS;
   }
-  if (!S_ISDIR(stat_buf.st_mode))
+  if (!S_ISDIR(statbuf.st_mode))
   {
     fprintf(stderr, "%s:%d [ERROR]: (%s) not directory\n", __FILE__, __LINE__, dir_name.c_str());
-    return TFS_SUCCESS;
+    return EXIT_SUCCESS;
   }
 
-  int ret = 0;
-  for (i = 0; (i < count || count == 0); i++)
+  int iret = 0;
+  for (int i = 0; (i < count || count == 0); i++)
   {
-    ret = print_information(dir_name, type);
-    if ((ret == TFS_ERROR) || ((count == i + 1) && (count != 0)) || (global_stop == 0x01))
+    iret = print_information(dir_name, type);
+    if ((iret == EXIT_FAILURE)
+        || ((count == i + 1) && (count != 0))
+        || (gstop))
       break;
-    Func::sleep(interval, &global_stop);
+    common::Func::sleep(interval, gstop);
   }
-  return TFS_SUCCESS;
+  return EXIT_SUCCESS;
 }
 

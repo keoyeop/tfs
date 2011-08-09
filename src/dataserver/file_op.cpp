@@ -18,7 +18,7 @@
 #include <string.h>
 #include <errno.h>
 #include "common/error_msg.h"
-#include "common/interval.h"
+#include "common/internal.h"
 #include <Memory.hpp>
 
 namespace tfs
@@ -55,6 +55,7 @@ namespace tfs
         return;
       }
       ::close(fd_);
+      fd_ = -1;
     }
 
     int FileOperation::pread_file(char* buf, const int32_t nbytes, const int64_t offset)

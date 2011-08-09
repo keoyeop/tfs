@@ -15,9 +15,11 @@
  *      - modify 2010-04-23
  *
  */
-#include "compact_block.h"
 #include <Memory.hpp>
-using namespace std;
+#include "compact_block.h"
+#include "message/compact_block_message.h"
+#include "common/new_client.h"
+#include "common/client_manager.h"
 
 namespace tfs
 {
@@ -26,17 +28,17 @@ namespace tfs
     using namespace common;
     using namespace message;
     using namespace tbutil;
+    using namespace std;
 
     CompactBlock::CompactBlock()
     {
       init();
     }
 
-    CompactBlock::CompactBlock(Mutex* mutex, Client* client, const uint64_t dataserver_id)
+    CompactBlock::CompactBlock(const uint64_t ns_ip, const uint64_t dataserver_id)
     {
       init();
-      client_mutex_ = mutex;
-      client_ = client;
+      ns_ip_ = ns_ip;
       dataserver_id_ = dataserver_id;
     }
 
@@ -46,9 +48,6 @@ namespace tfs
 
     void CompactBlock::init()
     {
-      client_mutex_ = NULL;
-      client_ = NULL;
-
       stop_ = 0;
       expire_compact_interval_ = SYSPARAM_DATASERVER.expire_compact_time_;
       last_expire_compact_block_time_ = 0;
@@ -63,15 +62,6 @@ namespace tfs
       compact_block_monitor_.lock();
       compact_block_monitor_.notifyAll();
       compact_block_monitor_.unlock();
-    }
-
-    // the enterance of compact tasks
-    void* CompactBlock::do_compact_block(void* args)
-    {
-      TBSYS_LOG(INFO, "tid: %u", Func::gettid());
-      CompactBlock *ds = reinterpret_cast<CompactBlock *> (args);
-      ds->run_compact_block();
-      return NULL;
     }
 
     //execute compacting tasks
@@ -134,6 +124,7 @@ namespace tfs
     //	add one logic block compact
     int CompactBlock::add_cpt_task(CompactBlkInfo* cpt_blk)
     {
+      CompactBlkInfo t_cpt_blk = *cpt_blk;
       int32_t cpt_exist = 0;
       compact_block_monitor_.lock();
       // check whether requested block existed
@@ -160,8 +151,9 @@ namespace tfs
       compact_block_monitor_.notify();
       compact_block_monitor_.unlock();
 
-      TBSYS_LOG(INFO, "add compact block. blockid: %u, owner: %d, preserve_time: %d\n",
-          cpt_blk->block_id_, cpt_blk->owner_, cpt_blk->preserve_time_);
+      TBSYS_LOG(INFO, "add compact block. cpt_exist: %d, blockid: %u, owner: %d, preserve_time: %d\n",
+        cpt_exist, t_cpt_blk.block_id_, t_cpt_blk.owner_, t_cpt_blk.preserve_time_);
+
       return cpt_exist;
     }
 
@@ -199,6 +191,7 @@ namespace tfs
       if (TFS_SUCCESS != ret)
       {
         TBSYS_LOG(ERROR, "inner real compact blockid: %u fail. ret: %d\n", block_id, ret);
+        return ret;
       }
       TBSYS_LOG(DEBUG, "compact blockid : %u, switch compact blk\n", block_id);
 
@@ -233,20 +226,20 @@ namespace tfs
 
       CompactBlockCompleteMessage req_cbc_msg;
       req_cbc_msg.set_block_id(block_id);
-      CompactCompleteStatus compact_status = COMPACT_COMPLETE_STATUS_SUCCESS;
+      CompactStatus compact_status = COMPACT_STATUS_SUCCESS;
       if (TFS_SUCCESS != success)
       {
-        compact_status = COMPACT_COMPLETE_STATUS_FAILED;
+        compact_status = COMPACT_STATUS_FAILED;
       }
       req_cbc_msg.set_success(compact_status);
       req_cbc_msg.set_server_id(dataserver_id_);
       BlockInfo* blk = LogicBlock->get_block_info();
-      req_cbc_msg.set_block_info(blk);
+      req_cbc_msg.set_block_info(*blk);
 
-      client_mutex_->lock();
-      Message* rsp_msg = client_->call(&req_cbc_msg);
-      tbsys::gDelete(rsp_msg);
-      client_mutex_->unlock();
+      NewClient* client = NewClientManager::get_instance().create_client();
+      tbnet::Packet* rsp_msg = NULL;
+      send_msg_to_server(ns_ip_, client, &req_cbc_msg, rsp_msg);
+      NewClientManager::get_instance().destroy_client(client);
 
       return TFS_SUCCESS;
     }
@@ -317,10 +310,6 @@ namespace tfs
         ret = fit->next();
         if (TFS_SUCCESS != ret)
         {
-          if (EXIT_META_CONFLICT_ERROR == ret)
-          {
-            continue;
-          }
           tbsys::gDeleteA(dest_buf);
           tbsys::gDelete(fit);
           return ret;

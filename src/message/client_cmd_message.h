@@ -15,108 +15,67 @@
  */
 #ifndef TFS_MESSAGE_CLIENTCMDMESSAGE_H_
 #define TFS_MESSAGE_CLIENTCMDMESSAGE_H_
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string>
-#include <errno.h>
-#include "common/interval.h"
-#include "message.h"
+#include "common/base_packet.h"
 
 namespace tfs
 {
   namespace message
   {
-#pragma pack(4)
-    struct ClientCmdInfo
-    {
-      int32_t type_;
-      uint64_t server_id_;
-      uint32_t block_id_;
-      uint32_t version_;
-      uint64_t from_server_id_;
-    };
-#pragma pack()
-
     // Client Command
-    enum ClientCmd
-    {
-      CLIENT_CMD_EXPBLK = 1,
-      CLIENT_CMD_LOADBLK,
-      CLIENT_CMD_COMPACT,
-      CLIENT_CMD_IMMEDIATELY_REPL,
-      CLIENT_CMD_REPAIR_GROUP,
-      CLIENT_CMD_SET_PARAM,
-      CLIENT_CMD_UNLOADBLK,
-      CLIENT_CMD_GET_REPL_INFO,
-      CLIENT_CMD_CLEAR_REPL_INFO
-    };
-
-    class ClientCmdMessage: public Message
+    class ClientCmdMessage: public common::BasePacket 
     {
     public:
       ClientCmdMessage();
       virtual ~ClientCmdMessage();
-
-      inline void set_type(const int32_t type)
+      virtual int serialize(common::Stream& output) const ;
+      virtual int deserialize(common::Stream& input);
+      virtual int64_t length() const;
+      inline void set_value1(const uint64_t value)
       {
-        client_cmd_info_.type_ = type;
+        info_.value1_ = value;
       }
-
-      inline int32_t get_type() const
+      inline uint64_t get_value1() const
       {
-        return client_cmd_info_.type_;
+        return info_.value1_;
       }
-
-      inline void set_server_id(const uint64_t server_id)
+      inline void set_value2(const uint64_t value)
       {
-        client_cmd_info_.server_id_ = server_id;
+        info_.value2_ = value;
       }
-
-      inline uint64_t get_server_id() const
+      inline uint64_t get_value2() const
       {
-        return client_cmd_info_.server_id_;
+        return info_.value2_;
       }
-
-      inline void set_block_id(const uint32_t block_id)
+      inline void set_value3(const uint32_t value)
       {
-        client_cmd_info_.block_id_ = block_id;
+        info_.value3_ = value;
       }
-
-      inline uint32_t get_block_id() const
+      inline uint32_t get_value3() const
       {
-        return client_cmd_info_.block_id_;
+        return info_.value3_;
       }
-
-      inline void set_version(const uint32_t version)
+      inline void set_value4(const uint32_t value)
       {
-        client_cmd_info_.version_ = version;
+        info_.value4_ = value;
       }
-
-      inline uint32_t get_version() const
+      inline uint32_t get_value4() const
       {
-        return client_cmd_info_.version_;
+        return info_.value4_;
       }
-
-      inline void set_from_server_id(const uint64_t from_server_id)
+      inline void set_cmd(const int32_t cmd)
       {
-        client_cmd_info_.from_server_id_ = from_server_id;
+        info_.cmd_ = cmd;
       }
-
-      inline uint64_t get_from_server_id() const
+      inline int32_t get_cmd() const
       {
-        return client_cmd_info_.from_server_id_;
+        return info_.cmd_;
       }
-
-      virtual int parse(char *data, int32_t len);
-      virtual int build(char *data, int32_t len);
-      virtual int32_t message_length();
-      virtual char *get_name();
-
-      static Message* create(const int32_t type);
+      inline const common::ClientCmdInformation& get_cmd_info() const
+      {
+        return info_;
+      }
     protected:
-      ClientCmdInfo client_cmd_info_;
+      common::ClientCmdInformation info_;
     };
   }
 }

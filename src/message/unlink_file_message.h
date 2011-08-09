@@ -16,15 +16,7 @@
 #ifndef TFS_MESSAGE_UNLINKFILEMESSAGE_H_
 #define TFS_MESSAGE_UNLINKFILEMESSAGE_H_
 
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <string>
-#include <errno.h>
-
-#include "common/interval.h"
-#include "message.h"
-
+#include "common/base_packet.h"
 namespace tfs
 {
   namespace message
@@ -32,18 +24,23 @@ namespace tfs
 #pragma pack(4)
     struct UnlinkFileInfo
     {
+      int deserialize(const char* data, const int64_t data_len, int64_t& pos);
+      int serialize(char* data, const int64_t data_len, int64_t& pos) const;
+      int64_t length() const;
       uint32_t block_id_;
       uint64_t file_id_;
       int32_t is_server_;
     };
 #pragma pack()
 
-    class UnlinkFileMessage: public Message
+    class UnlinkFileMessage: public common::BasePacket
     {
       public:
         UnlinkFileMessage();
         virtual ~UnlinkFileMessage();
-
+        virtual int serialize(common::Stream& output) const ;
+        virtual int deserialize(common::Stream& input);
+        virtual int64_t length() const;
         inline void set_block_id(const uint32_t block_id)
         {
           unlink_file_info_.block_id_ = block_id;
@@ -107,7 +104,6 @@ namespace tfs
         inline void set_block_version(const int32_t version)
         {
           version_ = version;
-          has_lease_ = true;
         }
 
         inline int32_t get_block_version() const
@@ -115,25 +111,19 @@ namespace tfs
           return version_;
         }
 
-        inline void set_lease_id(const int32_t lease)
+        inline void set_lease_id(const uint32_t lease_id)
         {
-          lease_ = lease;
-          has_lease_ = true;
+          lease_id_ = lease_id;
         }
 
-        inline int32_t get_lease_id() const
+        inline uint32_t get_lease_id() const
         {
-          return lease_;
+          return lease_id_;
         }
 
         inline bool is_server() const
         {
           return (unlink_file_info_.is_server_ & 0x1) != 0;
-        }
-
-        inline bool get_has_lease() const
-        {
-          return has_lease_;
         }
 
         inline void set_del()
@@ -156,22 +146,18 @@ namespace tfs
           unlink_file_info_.is_server_ |= common::REVEAL;
         }
 
-        virtual int parse(char* data, int32_t len);
-        virtual int build(char* data, int32_t len);
-        virtual int32_t message_length();
-        virtual char* get_name();
+        inline bool has_lease() const
+        {
+          return (lease_id_ != common::INVALID_LEASE_ID);
+        }
 
-        static Message* create(const int32_t type);
       protected:
         UnlinkFileInfo unlink_file_info_;
         int32_t option_flag_;
-        common::VUINT64 dataservers_;
-        int32_t version_;
-        int32_t lease_;
-        bool has_lease_;
+        mutable common::VUINT64 dataservers_;
+        mutable int32_t version_;
+        mutable uint32_t lease_id_;
     };
-
   }
-
 }
 #endif

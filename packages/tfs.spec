@@ -28,7 +28,7 @@ files for developing applications that use the %name package.
 %build
 chmod u+x build.sh
 ./build.sh init
-./configure --prefix=%{_prefix}
+./configure --prefix=%{_prefix} --with-release=yes
 make %{?_smp_mflags}
 
 %install
@@ -40,7 +40,6 @@ rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(0755, admin, admin)
-%{_prefix}
 %{_prefix}/bin
 %{_prefix}/lib
 %{_prefix}/conf

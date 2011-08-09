@@ -11,149 +11,119 @@
  * Authors:
  *   duolong <duolong@taobao.com>
  *      - initial release
- *   qushan<qushan@taobao.com> 
+ *   qushan<qushan@taobao.com>
  *      - modify 2009-03-27
- *   duanfei <duanfei@taobao.com> 
+ *   duanfei <duanfei@taobao.com>
  *      - modify 2010-04-23
  *
  */
 #ifndef TFS_NAMESERVER_NAMESERVER_H_
 #define TFS_NAMESERVER_NAMESERVER_H_
 
-#include <string>
-#include <ext/hash_map>
-#include <stdarg.h>
-#include <deque>
-#include <Mutex.h>
-#include <Monitor.h>
-#include <Timer.h>
-#include <Handle.h>
-
-#include "message/async_client.h"
+#include "common/internal.h"
+#include "common/base_service.h"
 #include "ns_define.h"
-#include "meta_manager.h"
-#include "replicate.h"
-#include "compact.h"
-#include "proactor_data_pipe.h"
+#include "layout_manager.h"
 #include "heart_manager.h"
-#include "scanner_manager.h"
-#include "redundant.h"
 
 namespace tfs
 {
   namespace nameserver
   {
     class NameServer;
-
-    // a timer class for itself
     class OwnerCheckTimerTask: public tbutil::TimerTask
     {
     public:
-      OwnerCheckTimerTask(NameServer* fsnm);
+      OwnerCheckTimerTask(NameServer* server);
       virtual ~OwnerCheckTimerTask();
       virtual void runTimerTask();
     private:
       DISALLOW_COPY_AND_ASSIGN( OwnerCheckTimerTask);
-      NameServer* fs_name_system_;
-      int main_task_queue_size_;
-
-      tbutil::Time max_owner_check_time_;
-      tbutil::Time owner_check_time_;
+      NameServer* server_;
+      const int64_t MAX_LOOP_TIME;
+      int64_t max_owner_check_time_;
+      int64_t owner_check_time_;
+      int32_t main_task_queue_size_;
     };
     typedef tbutil::Handle<OwnerCheckTimerTask> OwnerCheckTimerTaskPtr;
 
-    // the main class for run timer, start threads and handle packets.
-    class NameServer: public tbnet::IServerAdapter, public tbnet::IPacketQueueHandler, public tbsys::Runnable
+    class NameServer: public common::BaseService
     {
     public:
       NameServer();
       virtual ~NameServer();
-      int start();
-      int stop();
-      int wait();
+      /** initialize application data*/
+      virtual int initialize(int argc, char* argv[]);
 
-    public:
-      // interface implementations
-      tbnet::IPacketHandler::HPRetCode handlePacket(tbnet::Connection *connection, tbnet::Packet *packet);
-      bool handlePacketQueue(tbnet::Packet *packet, void *args);
+      /** destroy application data*/
+      virtual int destroy_service();
 
-      static int rm_block_from_ds(const uint64_t server_id, const uint32_t block_id);
-      static int rm_block_from_ds(const uint64_t server_id, const std::vector<uint32_t>& block_ids);
-
-      MetaManager* get_meta_mgr()
+      /** create the packet streamer, this is used to create packet according to packet code */
+      virtual tbnet::IPacketStreamer* create_packet_streamer()
       {
-        return &meta_mgr_;
-      }
-      NsRuntimeGlobalInformation* get_ns_global_info()
-      {
-        return &ns_global_info_;
-      }
-      const tbutil::TimerPtr& get_timer() const
-      {
-        return timer_;
-      }
-      tbnet::PacketQueueThread* get_packet_queue_thread()
-      {
-        return &main_task_queue_thread_;
+        return new common::BasePacketStreamer();
       }
 
-    private:
-      MetaManager meta_mgr_;
-      NsRuntimeGlobalInformation ns_global_info_;
-      tbutil::TimerPtr timer_;
+      /** destroy the packet streamer*/
+      virtual void destroy_packet_streamer(tbnet::IPacketStreamer* streamer)
+      {
+        tbsys::gDelete(streamer);
+      }
+
+      /** create the packet streamer, this is used to create packet*/
+      virtual common::BasePacketFactory* create_packet_factory()
+      {
+        return new message::MessageFactory();
+      }
+
+      /** destroy packet factory*/
+      virtual void destroy_packet_factory(common::BasePacketFactory* factory)
+      {
+        tbsys::gDelete(factory);
+      }
+
+      /** handle single packet */
+      virtual tbnet::IPacketHandler::HPRetCode handlePacket(tbnet::Connection *connection, tbnet::Packet *packet);
+
+      /** handle packet*/
+      virtual bool handlePacketQueue(tbnet::Packet *packet, void *args);
+
+      int callback(common::NewClient* client);
+
+   private:
+      DISALLOW_COPY_AND_ASSIGN(NameServer);
+      LayoutManager meta_mgr_;
       MasterHeartTimerTaskPtr master_heart_task_;
       SlaveHeartTimerTaskPtr slave_heart_task_;
       OwnerCheckTimerTaskPtr owner_check_task_;
       CheckOwnerIsMasterTimerTaskPtr check_owner_is_master_task_;
       MasterAndSlaveHeartManager master_slave_heart_mgr_;
-
-      message::TfsPacketStreamer streamer_;
-      tbnet::Transport transport_;
-      message::MessageFactory msg_factory_;
-
-      int32_t main_task_queue_size_;
-
-      // threads
-      tbsys::CThread check_ds_thread_; // check dataserver heartbeat
-      tbsys::CThread check_block_thread_; // check replication count
-      tbsys::CThread balance_thread_; // blocks balance
-      tbsys::CThread time_out_thread_; // check timeout task
-      ReplicateLauncher replicate_thread_; // replicate blocks thread
-      CompactLauncher compact_thread_; // compact blocks thread
-      RedundantLauncher redundant_thread_;
-      tbnet::PacketQueueThread main_task_queue_thread_;
       HeartManagement heart_mgr_;
-      ScannerManager pass_mgr_;
 
-      // thread runner functions
-      void run(tbsys::CThread *thread, void *arg);
-      int do_check_ds();
-      int do_check_blocks();
-      int do_time_out();
-      int do_balance();
+    protected:
+      /** get log file path*/
+      virtual const char* get_log_file_path() { return NULL;}
 
-      // message handler functions
-      int get_block_info(message::Message* msg);
-      int write_complete(message::Message* msg);
-      int update_block_info(message::Message* msg);
-      int do_control_cmd(message::Message* msg);
-      int get_ds_status(message::Message* msg);
-      int get_replicate_info_msg(message::Message* msg);
-      int set_runtime_param(const uint32_t index, uint64_t value, char *retstr);
-      int owner_check(message::Message* msg);
-      int get_block_list(message::Message* msg);
-
-      int check_ds(const time_t now);
+      /** get pid file path */
+      virtual const char* get_pid_file_path() { return NULL;}
 
     private:
-      DISALLOW_COPY_AND_ASSIGN( NameServer);
+      int open(common::BasePacket* msg);
+      int close(common::BasePacket* msg);
+      int batch_open(common::BasePacket* msg);
+      int update_block_info(common::BasePacket* msg);
+      int show_server_information(common::BasePacket* msg);
+      int owner_check(common::BasePacket* msg);
+      int ping(common::BasePacket* msg);
+      int dump_plan(common::BasePacket* msg);
+      int client_control_cmd(common::BasePacket* msg);
+      int do_master_msg_helper(common::BasePacket* packet);
+      int do_slave_msg_helper(common::BasePacket* packet);
+
       int initialize_ns_global_info();
       int get_peer_role();
-      void initialize_handle_threads();
-      void initialize_handle_task_and_heart_threads();
       int wait_for_ds_report();
     };
-
-  }
-} // end namespace tfs::nameserver
+  }/** nameserver **/
+}/** tfs **/
 #endif

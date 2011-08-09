@@ -2,10 +2,10 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.59)
-AC_INIT([tfs], 1.3, duolong@taobao.com)
+AC_INIT([tfs], 1.4, duolong@taobao.com)
 AC_CONFIG_SRCDIR([src/common/config_item.h])
 
-AM_INIT_AUTOMAKE(tfs, 1.3)
+AM_INIT_AUTOMAKE(tfs, 1.4)
 # Checks for programs.
 AC_PROG_AWK
 AC_PROG_CXX
@@ -63,6 +63,32 @@ fi
 AC_SUBST([READLINE_INCLUDE])
 AC_SUBST([READLINE_LIB])
 
+AC_ARG_WITH([tair-root],
+           AS_HELP_STRING([--with-tair-root],
+           [Tair installation path, need when enable uniquestore feature]),
+           TAIR_ROOT=${withval})
+if  test -z "${TAIR_ROOT}"; then
+   dnl tbnet include path supplied
+   TAIR_ROOT="/usr/local"
+fi
+if ! test -d "${TAIR_ROOT}/include" -a -d "${TBLIB_ROOT}/lib"; then
+        AC_MSG_ERROR([TAIR_ROOT is not work! expect TAIR_ROOT/include and TAIR_ROOT/lib directory])
+        exit 1;
+fi
+
+AC_ARG_ENABLE([uniquestore],
+           AS_HELP_STRING([--enable-uniquestore],
+           [enable unique store feature. need TaoBao Tair library support, use --with-tair-root to specify path]),
+           [enable_uniquestore=${enableval}],
+           [enable_uniquestore="no"])
+if test "${enable_uniquestore}" = "yes"; then
+        UNIQUE_STORE_CPPFLAGS="-DWITH_UNIQUE_STORE -I${TAIR_ROOT}/include"
+        UNIQUE_STORE_LDFLAGS="${TAIR_ROOT}/lib/libtairclientapi.a -lboost_thread -lz"
+fi
+AM_CONDITIONAL([WITH_UNIQUE_STORE],[test x$enable_uniquestore = xyes])
+AC_SUBST([UNIQUE_STORE_CPPFLAGS])
+AC_SUBST([UNIQUE_STORE_LDFLAGS])
+
 AC_CACHE_CHECK(if fallocate is implemented, ac_cv_func_fallocate,
   AC_TRY_RUN([
     #include <fcntl.h>
@@ -100,10 +126,11 @@ AC_ARG_WITH([release],
     [use optimize (default is NO)]),
     [
       if test "$withval" = "yes"; then
-        CXXFLAGS="-O2 -finline-functions -fno-strict-aliasing -Wall -fPIC -D__STDC_LIMIT_MACROS"
+        CXXFLAGS="-O2 -finline-functions -fno-strict-aliasing -Wall -fPIC -D__STDC_LIMIT_MACROS -D_NO_EXCEPTION"
       fi
     ],
-    [CXXFLAGS="-g -Wall -fPIC -D__STDC_LIMIT_MACROS"]
+    [CXXFLAGS="-g -pg -D__STDC_LIMIT_MACROS -Wall -Werror -Wextra -Wunused-parameter -Wformat -Wconversion -Wdeprecated "]
+    #[CXXFLAGS="-g -Wall -fPIC -D__STDC_LIMIT_MACROS -DTFS_TEST -D_NO_EXCEPTION"]
 )
 
 ac_default_prefix=${HOME}/tfs_bin
@@ -140,21 +167,28 @@ AC_CHECK_FUNCS([fdatasync ftruncate gethostbyname getpagesize gettimeofday memse
 AC_CONFIG_FILES([Makefile
                  conf/Makefile
                  scripts/Makefile
+                 scripts/ha/Makefile
                  src/Makefile
                  src/adminserver/Makefile
-                 src/client/Makefile
+                 src/new_client/Makefile
                  src/common/Makefile
                  src/dataserver/Makefile
                  src/message/Makefile
                  src/monitor/Makefile
                  src/nameserver/Makefile
+                 src/rcserver/Makefile
                  src/tools/Makefile
+                 src/tools/util/Makefile
                  src/tools/dataserver/Makefile
                  src/tools/nameserver/Makefile
                  src/tools/adminserver/Makefile
+                 src/tools/transfer/Makefile
+                 src/tools/mock/Makefile
+                 src/tools/cluster/Makefile
                  tests/Makefile
                  tests/batch/Makefile
-                 tests/client/Makefile
+                 tests/rcserver/Makefile
+                 tests/common/Makefile
                  tests/dataserver/Makefile
                  tests/intergrate/Makefile])
 AC_OUTPUT

@@ -22,6 +22,7 @@
 
 using namespace tfs::dataserver;
 using namespace tfs::common;
+using namespace std;
 
 int main(int argc, char* argv[])
 {
@@ -62,9 +63,14 @@ int main(int argc, char* argv[])
   }
 
   int ret = 0;
-  if ((ret = SysParam::instance().load_data_server(conf_file, server_index)) != TFS_SUCCESS)
+  if (EXIT_SUCCESS != TBSYS_CONFIG.load(conf_file))
   {
-    fprintf(stderr, "SysParam::load file system param failed: %s\n", conf_file);
+    cerr << "load config error conf_file is " << conf_file;
+    return TFS_ERROR;
+  }
+  if ((ret = SYSPARAM_DATASERVER.initialize(server_index)) != TFS_SUCCESS)
+  {
+    cerr << "SysParam::load file system param failed:" << conf_file << endl;
     return ret;
   }
 

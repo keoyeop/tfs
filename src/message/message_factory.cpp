@@ -19,144 +19,209 @@ namespace tfs
 {
   namespace message
   {
-    using namespace tfs::common;
-
-    MessageFactory::MessageFactory()
+    tbnet::Packet* MessageFactory::createPacket(int pcode)
     {
-      create_message_map_[STATUS_MESSAGE] = StatusMessage::create;
-      create_message_map_[GET_BLOCK_INFO_MESSAGE] = GetBlockInfoMessage::create;
-      create_message_map_[SET_BLOCK_INFO_MESSAGE] = SetBlockInfoMessage::create;
-      create_message_map_[CARRY_BLOCK_MESSAGE] = CarryBlockMessage::create;
-      create_message_map_[SET_DATASERVER_MESSAGE] = SetDataserverMessage::create;
-      create_message_map_[UPDATE_BLOCK_INFO_MESSAGE] = UpdateBlockInfoMessage::create;
-      create_message_map_[BLOCK_WRITE_COMPLETE_MESSAGE] = BlockWriteCompleteMessage::create;
-      create_message_map_[READ_DATA_MESSAGE] = ReadDataMessage::create;
-      create_message_map_[RESP_READ_DATA_MESSAGE] = RespReadDataMessage::create;
-      create_message_map_[FILE_INFO_MESSAGE] = FileInfoMessage::create;
-      create_message_map_[RESP_FILE_INFO_MESSAGE] = RespFileInfoMessage::create;
-      create_message_map_[WRITE_DATA_MESSAGE] = WriteDataMessage::create;
-      create_message_map_[CLOSE_FILE_MESSAGE] = CloseFileMessage::create;
-      create_message_map_[UNLINK_FILE_MESSAGE] = UnlinkFileMessage::create;
-      create_message_map_[REPLICATE_BLOCK_MESSAGE] = ReplicateBlockMessage::create;
-      create_message_map_[COMPACT_BLOCK_MESSAGE] = CompactBlockMessage::create;
-      create_message_map_[GET_SERVER_STATUS_MESSAGE] = GetServerStatusMessage::create;
-      create_message_map_[SET_SERVER_STATUS_MESSAGE] = SetServerStatusMessage::create;
-      create_message_map_[SUSPECT_DATASERVER_MESSAGE] = SuspectDataserverMessage::create;
-      create_message_map_[RENAME_FILE_MESSAGE] = RenameFileMessage::create;
-      create_message_map_[CLIENT_CMD_MESSAGE] = ClientCmdMessage::create;
-      create_message_map_[CREATE_FILENAME_MESSAGE] = CreateFilenameMessage::create;
-      create_message_map_[RESP_CREATE_FILENAME_MESSAGE] = RespCreateFilenameMessage::create;
-      create_message_map_[ROLLBACK_MESSAGE] = RollbackMessage::create;
-      create_message_map_[RESP_HEART_MESSAGE] = RespHeartMessage::create;
-      create_message_map_[RESET_BLOCK_VERSION_MESSAGE] = ResetBlockVersionMessage::create;
-      create_message_map_[BLOCK_FILE_INFO_MESSAGE] = BlockFileInfoMessage::create;
-      create_message_map_[NEW_BLOCK_MESSAGE] = NewBlockMessage::create;
-      create_message_map_[REMOVE_BLOCK_MESSAGE] = RemoveBlockMessage::create;
-      create_message_map_[LIST_BLOCK_MESSAGE] = ListBlockMessage::create;
-      create_message_map_[RESP_LIST_BLOCK_MESSAGE] = RespListBlockMessage::create;
-      create_message_map_[BLOCK_WRITE_COMPLETE_MESSAGE] = BlockWriteCompleteMessage::create;
-      create_message_map_[BLOCK_RAW_META_MESSAGE] = BlockRawMetaMessage::create;
-      create_message_map_[WRITE_RAW_DATA_MESSAGE] = WriteRawDataMessage::create;
-      create_message_map_[WRITE_INFO_BATCH_MESSAGE] = WriteInfoBatchMessage::create;
-      create_message_map_[BLOCK_COMPACT_COMPLETE_MESSAGE] = CompactBlockCompleteMessage::create;
-      create_message_map_[READ_DATA_MESSAGE_V2] = ReadDataMessageV2::create;
-      create_message_map_[RESP_READ_DATA_MESSAGE_V2] = RespReadDataMessageV2::create;
-      create_message_map_[LIST_BITMAP_MESSAGE] = ListBitMapMessage::create;
-      create_message_map_[RESP_LIST_BITMAP_MESSAGE] = RespListBitMapMessage::create;
-      create_message_map_[RELOAD_CONFIG_MESSAGE] = ReloadConfigMessage::create;
-      create_message_map_[SERVER_META_INFO_MESSAGE] = ServerMetaInfoMessage::create;
-      create_message_map_[RESP_SERVER_META_INFO_MESSAGE] = RespServerMetaInfoMessage::create;
-      create_message_map_[READ_RAW_DATA_MESSAGE] = ReadRawDataMessage::create;
-      create_message_map_[RESP_READ_RAW_DATA_MESSAGE] = RespReadRawDataMessage::create;
-      create_message_map_[REPLICATE_INFO_MESSAGE] = ReplicateInfoMessage::create;
-      create_message_map_[ACCESS_STAT_INFO_MESSAGE] = AccessStatInfoMessage::create;
-      create_message_map_[READ_SCALE_IMAGE_MESSAGE] = ReadScaleImageMessage::create;
-      create_message_map_[CRC_ERROR_MESSAGE] = CrcErrorMessage::create;
-
-      create_message_map_[OPLOG_SYNC_MESSAGE] = OpLogSyncMessage::create;//add by duanbing 2010.03.01:15:31
-      create_message_map_[OPLOG_SYNC_RESPONSE_MESSAGE] = OpLogSyncResponeMessage::create;
-      create_message_map_[MASTER_AND_SLAVE_HEART_MESSAGE] = MasterAndSlaveHeartMessage::create;
-      create_message_map_[MASTER_AND_SLAVE_HEART_RESPONSE_MESSAGE] = MasterAndSlaveHeartResponseMessage::create;
-      create_message_map_[HEARTBEAT_AND_NS_HEART_MESSAGE] = HeartBeatAndNSHeartMessage::create;
-      create_message_map_[GET_BLOCK_LIST_MESSAGE] = GetBlockListMessage::create;
-      create_message_map_[ADMIN_CMD_MESSAGE] = AdminCmdMessage::create;
-    }
-
-    MessageFactory::~MessageFactory()
-    {
-      create_message_map_.clear();
-    }
-
-    Message* MessageFactory::create_message(int32_t type)
-    {
-      type = (type & 0xFFFF);
-      CREATE_MESSAGE_MAP_ITER it = create_message_map_.find(type);
-      if (it == create_message_map_.end())
+      tbnet::Packet* packet = BasePacketFactory::createPacket(pcode);
+      if (NULL == packet)
       {
-        TBSYS_LOG(ERROR, "createMessage error: type=%d", type);
-        return NULL;
-      }
-      return (it->second)(type);
-    }
-
-    tbnet::Packet* MessageFactory::createPacket(int32_t pcode)
-    {
-      return create_message(pcode);
-    }
-
-    Message* MessageFactory::clone_message(Message* message, int32_t version, bool deserialize)
-    {
-      Message* cloned = create_message(message->get_message_type());
-      if (cloned)
-      {
-        if (!cloned->copy(message, version, deserialize))
+        int32_t real_pcode = pcode & 0xFFFF;
+        switch (real_pcode)
         {
-          TBSYS_LOG(ERROR, "copy messsge %x error\n", message);
-          delete cloned;
-          return NULL;
+          case common::GET_BLOCK_INFO_MESSAGE:
+            packet = new GetBlockInfoMessage();
+            break;
+          case common::SET_BLOCK_INFO_MESSAGE:
+            packet = new  SetBlockInfoMessage();
+            break;
+          case common::BATCH_GET_BLOCK_INFO_MESSAGE:
+            packet = new  BatchGetBlockInfoMessage();
+            break;
+          case common::BATCH_SET_BLOCK_INFO_MESSAGE:
+            packet = new  BatchSetBlockInfoMessage();
+            break;
+          case common::CARRY_BLOCK_MESSAGE:
+            packet = new  CarryBlockMessage();
+            break;
+          case common::SET_DATASERVER_MESSAGE:
+            packet = new  SetDataserverMessage();
+            break;
+          case common::UPDATE_BLOCK_INFO_MESSAGE:
+            packet = new  UpdateBlockInfoMessage();
+            break;
+          case common::BLOCK_WRITE_COMPLETE_MESSAGE:
+            packet = new  BlockWriteCompleteMessage();
+            break;
+          case common::READ_DATA_MESSAGE:
+            packet = new  ReadDataMessage();
+            break;
+          case common::RESP_READ_DATA_MESSAGE:
+            packet = new  RespReadDataMessage();
+            break;
+          case common::FILE_INFO_MESSAGE:
+            packet = new  FileInfoMessage();
+            break;
+          case common::RESP_FILE_INFO_MESSAGE:
+            packet = new  RespFileInfoMessage();
+            break;
+          case common::WRITE_DATA_MESSAGE:
+            packet = new  WriteDataMessage();
+            break;
+          case common::CLOSE_FILE_MESSAGE:
+            packet = new  CloseFileMessage();
+            break;
+          case common::UNLINK_FILE_MESSAGE:
+            packet = new  UnlinkFileMessage();
+            break;
+          case common::REPLICATE_BLOCK_MESSAGE:
+            packet = new  ReplicateBlockMessage();
+            break;
+          case common::COMPACT_BLOCK_MESSAGE:
+            packet = new  CompactBlockMessage();
+            break;
+          case common::GET_SERVER_STATUS_MESSAGE:
+            packet = new  GetServerStatusMessage();
+            break;
+          /*case common::SUSPECT_DATASERVER_MESSAGE:
+            packet = new  SuspectDataserverMessage();
+            break;*/
+          case common::RENAME_FILE_MESSAGE:
+            packet = new  RenameFileMessage();
+            break;
+          case common::CLIENT_CMD_MESSAGE:
+            packet = new  ClientCmdMessage();
+            break;
+          case common::CREATE_FILENAME_MESSAGE:
+            packet = new  CreateFilenameMessage();
+            break;
+          case common::RESP_CREATE_FILENAME_MESSAGE:
+            packet = new  RespCreateFilenameMessage();
+            break;
+          case common::ROLLBACK_MESSAGE:
+            packet = new  RollbackMessage();
+            break;
+          case common::RESP_HEART_MESSAGE:
+            packet = new  RespHeartMessage();
+            break;
+          case common::RESET_BLOCK_VERSION_MESSAGE:
+            packet = new  ResetBlockVersionMessage();
+            break;
+          case common::BLOCK_FILE_INFO_MESSAGE:
+            packet = new  BlockFileInfoMessage();
+            break;
+          case common::NEW_BLOCK_MESSAGE:
+            packet = new  NewBlockMessage();
+            break;
+          case common::REMOVE_BLOCK_MESSAGE:
+            packet = new  RemoveBlockMessage();
+            break;
+          case common::LIST_BLOCK_MESSAGE:
+            packet = new  ListBlockMessage();
+            break;
+          case common::RESP_LIST_BLOCK_MESSAGE:
+            packet = new  RespListBlockMessage();
+            break;
+          case common::BLOCK_RAW_META_MESSAGE:
+            packet = new  BlockRawMetaMessage();
+            break;
+          case common::WRITE_RAW_DATA_MESSAGE:
+            packet = new  WriteRawDataMessage();
+            break;
+          case common::WRITE_INFO_BATCH_MESSAGE:
+            packet = new  WriteInfoBatchMessage();
+            break;
+          case common::BLOCK_COMPACT_COMPLETE_MESSAGE:
+            packet = new  CompactBlockCompleteMessage();
+            break;
+          case common::READ_DATA_MESSAGE_V2:
+            packet = new  ReadDataMessageV2();
+            break;
+          case common::RESP_READ_DATA_MESSAGE_V2:
+            packet = new  RespReadDataMessageV2();
+            break;
+          case common::LIST_BITMAP_MESSAGE:
+            packet = new  ListBitMapMessage();
+            break;
+          case common::RESP_LIST_BITMAP_MESSAGE:
+            packet = new  RespListBitMapMessage();
+            break;
+          case common::RELOAD_CONFIG_MESSAGE:
+            packet = new  ReloadConfigMessage();
+            break;
+          case common::READ_RAW_DATA_MESSAGE:
+            packet = new  ReadRawDataMessage();
+            break;
+          case common::RESP_READ_RAW_DATA_MESSAGE:
+            packet = new  RespReadRawDataMessage();
+            break;
+          case common::ACCESS_STAT_INFO_MESSAGE:
+            packet = new  AccessStatInfoMessage();
+            break;
+          case common::READ_SCALE_IMAGE_MESSAGE:
+            packet = new  ReadScaleImageMessage();
+            break;
+          case common::CRC_ERROR_MESSAGE:
+            packet = new  CrcErrorMessage();
+            break;
+          case common::OPLOG_SYNC_MESSAGE:
+            packet = new  OpLogSyncMessage();
+            break;
+          case common::OPLOG_SYNC_RESPONSE_MESSAGE:
+            packet = new  OpLogSyncResponeMessage();
+            break;
+          case common::MASTER_AND_SLAVE_HEART_MESSAGE:
+            packet = new  MasterAndSlaveHeartMessage();
+            break;
+          case common::MASTER_AND_SLAVE_HEART_RESPONSE_MESSAGE:
+            packet = new  MasterAndSlaveHeartResponseMessage();
+            break;
+          case common::HEARTBEAT_AND_NS_HEART_MESSAGE:
+            packet = new  HeartBeatAndNSHeartMessage();
+            break;
+          case common::ADMIN_CMD_MESSAGE:
+            packet = new  AdminCmdMessage();
+            break;
+          case common::REMOVE_BLOCK_RESPONSE_MESSAGE:
+            packet = new  RemoveBlockResponseMessage();
+            break;
+          case common::DUMP_PLAN_MESSAGE:
+            packet = new  DumpPlanMessage();
+            break;
+          case common::DUMP_PLAN_RESPONSE_MESSAGE:
+            packet = new  DumpPlanResponseMessage();
+            break;
+          case common::SHOW_SERVER_INFORMATION_MESSAGE:
+            packet = new  ShowServerInformationMessage();
+            break;
+          case common::REQ_RC_LOGIN_MESSAGE:
+            packet = new ReqRcLoginMessage();
+            break;
+          case common::RSP_RC_LOGIN_MESSAGE:
+            packet = new RspRcLoginMessage();
+            break;
+          case common::REQ_RC_KEEPALIVE_MESSAGE:
+            packet = new ReqRcKeepAliveMessage();
+            break;
+          case common::RSP_RC_KEEPALIVE_MESSAGE:
+            packet = new RspRcKeepAliveMessage();
+            break;
+          case common::REQ_RC_LOGOUT_MESSAGE:
+            packet = new ReqRcLogoutMessage();
+            break;
+          case common::REQ_RC_RELOAD_MESSAGE:
+            packet = new ReqRcReloadMessage();
+            break;
+          case common::GET_DATASERVER_INFORMATION_MESSAGE:
+            packet = new GetDataServerInformationMessage();
+            break;
+          case common::GET_DATASERVER_INFORMATION_RESPONSE_MESSAGE:
+            packet = new GetDataServerInformationResponseMessage();
+            break;
+          default:
+            TBSYS_LOG(ERROR, "pcode: %d not found in message factory", real_pcode);
+            break;
         }
       }
-      return cloned;
+      return packet;
     }
-
-    int MessageFactory::send_error_message(Message* packet, int32_t level, char* file, int32_t line, const char* function,
-        uint64_t server_id, char* fmt, ...)
-    {
-      char buffer[1024];
-      char msgstr[512];
-
-      va_list ap;
-      va_start(ap, fmt);
-      vsnprintf(msgstr, 512, fmt, ap);
-      va_end(ap);
-      TBSYS_LOGGER.logMessage(level, file, line, function, "%s", msgstr);
-
-      snprintf(buffer, 1024, "%s %s", tbsys::CNetUtil::addrToString(server_id).c_str(), msgstr);
-      StatusMessage* msg = new StatusMessage(STATUS_MESSAGE_ERROR, buffer);
-
-      packet->reply_message(msg);
-
-      return TFS_SUCCESS;
-    }
-
-    int MessageFactory::send_error_message(Message* packet, int32_t level, char* file, int32_t line, const char* function,
-        int32_t err_code, uint64_t server_id, char* fmt, ...)
-    {
-      char buffer[1024];
-      char msgstr[512];
-
-      va_list ap;
-      va_start(ap, fmt);
-      vsnprintf(msgstr, 512, fmt, ap);
-      va_end(ap);
-      TBSYS_LOGGER.logMessage(level, file, line, function, "%s", msgstr);
-
-      snprintf(buffer, 1024, "%s %s", tbsys::CNetUtil::addrToString(server_id).c_str(), msgstr);
-      StatusMessage* msg = new StatusMessage(err_code, buffer);
-
-      packet->reply_message(msg);
-
-      return TFS_SUCCESS;
-    }
-  }
-}
+  }/** message **/
+}/** tfs **/

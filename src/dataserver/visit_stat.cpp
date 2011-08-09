@@ -13,12 +13,14 @@
  *      - initial release
  *
  */
-#include "visit_stat.h"
-#include "common/config.h"
-#include "common/parameter.h"
 #include <tbsys.h>
+//#include "common/config.h"
+#include "common/func.h"
+#include "common/parameter.h"
+#include "common/config_item.h"
+#include "visit_stat.h"
+#include "dataservice.h"
 
-using namespace std;
 namespace tfs
 {
   namespace dataserver
@@ -111,7 +113,7 @@ namespace tfs
       return ret;
     }
 
-    string VisitStat::filesize_category_desc(int32_t category)
+    std::string VisitStat::filesize_category_desc(int32_t category)
     {
       char buf[STAT_BUF_LEN];
       int32_t i = 1;
@@ -127,7 +129,7 @@ namespace tfs
         i = 10;
       int32_t base = category / (i / 10);
       sprintf(buf, "%dk~%dk", category, (base + 1) * (i / 10));
-      return string(buf);
+      return std::string(buf);
     }
 
     // -- AccessStatByClientIp
@@ -257,8 +259,8 @@ namespace tfs
 
     int32_t AccessControl::load()
     {
-      char* aclipmask = CONFIG.get_string_value(CONFIG_DATASERVER, "access_control_ipmask");
-      char* aclfile = CONFIG.get_string_value(CONFIG_DATASERVER, "access_control_file");
+      const char* aclipmask = TBSYS_CONFIG.getString(CONF_SN_DATASERVER, "access_control_ipmask");
+      const char* aclfile = TBSYS_CONFIG.getString(CONF_SN_DATASERVER, "access_control_file");
       return load(aclipmask, aclfile);
     }
 
@@ -266,13 +268,15 @@ namespace tfs
     {
       if (clear() < 0)
         return TFS_ERROR;
-      Configure oneconf;
-      if (oneconf.load(CONFIG.get_config_file_name()) != TFS_SUCCESS)
+
+      tbsys::CConfig oneconf;
+      DataService* service = dynamic_cast<DataService*>(BaseMain::instance());
+      if (oneconf.load(service->config_file_.c_str()) != TFS_SUCCESS)
       {
         return TFS_ERROR;
       }
-      char* aclipmask = oneconf.get_string_value(CONFIG_DATASERVER, "access_control_ipmask");
-      char* aclfile = oneconf.get_string_value(CONFIG_DATASERVER, "access_control_file");
+      const char* aclipmask = TBSYS_CONFIG.getString(CONF_SN_DATASERVER, "access_control_ipmask");
+      const char* aclfile = TBSYS_CONFIG.getString(CONF_SN_DATASERVER, "access_control_file");
       return load(aclipmask, aclfile);
     }
 

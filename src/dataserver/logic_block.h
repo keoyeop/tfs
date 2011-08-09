@@ -52,8 +52,8 @@ namespace tfs
           return common::TFS_SUCCESS;
         }
 
-        int load_block_file(const int32_t bucket_size, const MMapOption mmap_option);
-        int init_block_file(const int32_t bucket_size, const MMapOption mmap_option, const BlockType block_type);
+        int load_block_file(const int32_t bucket_size, const common::MMapOption mmap_option);
+        int init_block_file(const int32_t bucket_size, const common::MMapOption mmap_option, const BlockType block_type);
         int delete_block_file();
 
         void add_physic_block(PhysicalBlock* physic_block);
@@ -62,14 +62,15 @@ namespace tfs
         int check_block_version(int32_t& remote_version, common::UpdateBlockType &repair);
         int close_write_file(const uint64_t inner_file_id, DataFile* datafile, const uint32_t crc);
 
-        int read_file(const uint64_t inner_file_id, char* buf, int32_t& nbytes, const int32_t offset);
+        int read_file(const uint64_t inner_file_id, char* buf, int32_t& nbytes, const int32_t offset, const int8_t flag);
         int read_file_info(const uint64_t inner_file_id, common::FileInfo& finfo);
 
         int rename_file(const uint64_t old_inner_file_id, const uint64_t new_inner_file_id);
-        int unlink_file(const uint64_t inner_file_id, const int32_t action);
+        int unlink_file(const uint64_t inner_file_id, const int32_t action, int64_t& file_size);
         int read_raw_data(char* buf, int32_t& nbyte, const int32_t offset);
         int write_raw_data(const char* buf, const int32_t nbytes, const int32_t offset);
 
+        void reset_seq_id(uint64_t file_id);
         int reset_block_version();
         int get_meta_infos(common::RawMetaVec& raw_metas);
         int get_sorted_meta_infos(common::RawMetaVec& meta_infos);
@@ -219,8 +220,8 @@ namespace tfs
 
       private:
         char* buf_;             // inner buffer
-        int32_t data_len_, data_offset_; // data length, valid offset in buf_
-        int32_t read_offset_, buf_len_;  // read offset in block, buffer length
+        int32_t data_len_, data_offset_; // data length, offset
+        int32_t read_offset_, buf_len_;  // read offset, buffer length
         common::FileInfo cur_fileinfo_;  // current file meta info
         LogicBlock* logic_block_;        // associate logic block
         bool is_big_file_;               // big file or not

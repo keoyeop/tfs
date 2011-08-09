@@ -16,9 +16,12 @@
 #include <stdio.h>
 #include <Memory.hpp>
 
-#include "common/func.h"
-#include "message/client.h"
-#include "message/client_pool.h"
+#include "common/new_client.h"
+#include "common/client_manager.h"
+#include "common/base_packet_streamer.h"
+#include "common/base_packet_factory.h"
+#include "message/heart_message.h"
+#include "message/message_factory.h"
 #include "nameserver/ns_define.h"
 
 using namespace tfs::message;
@@ -30,26 +33,31 @@ namespace tfs
   {
     static NsStatus get_name_server_running_status(const uint64_t ip_port, const int32_t switch_flag)
     {
-      Client *client = CLIENT_POOL.get_client(ip_port);
-      if (client->connect() == EXIT_FAILURE)
-      {
-        CLIENT_POOL.release_client(client);
-        TBSYS_LOG(ERROR, "connect nameserver(%s) failed", tbsys::CNetUtil::addrToString(ip_port).c_str());
-        return NS_STATUS_NONE;
-      }
+      const int64_t TIMEOUT = 500;
       NsStatus status = NS_STATUS_NONE;
-      HeartBeatAndNSHeartMessage heart_msg;
-      heart_msg.set_ns_switch_flag_and_status(switch_flag, 0);
-      Message *ret_msg = client->call(&heart_msg);
-      if (ret_msg != NULL)
+      NewClient* client = NewClientManager::get_instance().create_client();
+      if (NULL != client)
       {
-        if (ret_msg->get_message_type() == HEARTBEAT_AND_NS_HEART_MESSAGE)
+        HeartBeatAndNSHeartMessage heart_msg;
+        heart_msg.set_ns_switch_flag_and_status(switch_flag, 0);
+        tbnet::Packet* rsp_msg = NULL;
+        if (TFS_SUCCESS == send_msg_to_server(ip_port, client, &heart_msg, rsp_msg, TIMEOUT))
         {
-          status = static_cast<NsStatus> (dynamic_cast<HeartBeatAndNSHeartMessage*> (ret_msg)->get_ns_status());
+          if (HEARTBEAT_AND_NS_HEART_MESSAGE == rsp_msg->getPCode())
+          {
+            status = static_cast<NsStatus> (dynamic_cast<HeartBeatAndNSHeartMessage*> (rsp_msg)->get_ns_status());
+          }
+          else
+          {
+            TBSYS_LOG(ERROR, "unknow packet pcode %d", rsp_msg->getPCode());
+          }
         }
-        tbsys::gDelete(ret_msg);
+        else
+        {
+          TBSYS_LOG(ERROR, "send packet error");
+        }
+        NewClientManager::get_instance().destroy_client(client);
       }
-      CLIENT_POOL.release_client(client);
       return status;
     }
   }
@@ -105,15 +113,22 @@ int main(int argc, char *argv[])
   {
     TBSYS_LOGGER.setLogLevel("ERROR");
   }
+  static MessageFactory packet_factory;
+  static BasePacketStreamer packet_streamer;
+  packet_streamer.set_packet_factory(&packet_factory);
+  NewClientManager::get_instance().initialize(&packet_factory, &packet_streamer);
+
   uint64_t hostid = tbsys::CNetUtil::strToAddr(const_cast<char*> (ip.c_str()), port);
+  int32_t iret  = NS_STATUS_NONE;
   NsStatus status = get_name_server_running_status(hostid, switch_flag);
   if ((status > NS_STATUS_UNINITIALIZE) && (status <= NS_STATUS_INITIALIZED))
   {
-    return 0;
+    iret = 0;
   }
   else
   {
     TBSYS_LOG(ERROR, "ping nameserver failed, get status(none)");
-    return status;
+    iret = status;
   }
+  return iret;
 }

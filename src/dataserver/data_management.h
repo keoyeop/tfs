@@ -42,23 +42,24 @@ namespace tfs
 
       public:
         void set_file_number(const uint64_t file_number);
-        int init_block_files(const common::SysParam::FileSystemParam& fs_param);
+        int init_block_files(const common::FileSystemParameter& fs_param);
         void get_ds_filesystem_info(int32_t& block_count, int64_t& use_capacity, int64_t& total_capacity);
         int get_all_logic_block(std::list<LogicBlock*>& logic_block_list);
+        int64_t get_all_logic_block_size();
 
         int create_file(const uint32_t block_id, uint64_t& file_id, uint64_t& file_number);
         int write_data(const common::WriteDataInfo& write_info, const int32_t lease_id, int32_t& version,
             const char* data_buffer, common::UpdateBlockType& repair);
         int erase_data_file(const uint64_t file_number);
         int close_write_file(const common::CloseFileInfo& close_file_info, int32_t& write_file_size);
-        int read_data(const uint32_t block_id, const uint64_t file_id, const int32_t read_offset,
+        int read_data(const uint32_t block_id, const uint64_t file_id, const int32_t read_offset, const int8_t flag,
             int32_t& real_read_len, char* tmpDataBuffer);
         int read_raw_data(uint32_t block_id, int32_t read_offset, int32_t& real_read_len, char* tmpDataBuffer);
 
         int read_file_info(const uint32_t block_id,
             const uint64_t file_id, const int32_t mode, common::FileInfo& finfo);
         int rename_file(const uint32_t block_id, const uint64_t file_id, const uint64_t new_file_id);
-        int unlink_file(const uint32_t block_id, const uint64_t file_id, const int32_t action);
+        int unlink_file(const uint32_t block_id, const uint64_t file_id, const int32_t action, int64_t& file_size);
 
         int batch_new_block(const common::VUINT32* new_blocks);
         int batch_remove_block(const common::VUINT32* remove_blocks);

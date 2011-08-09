@@ -15,8 +15,6 @@
  */
 #include "compact_block_message.h"
 
-using namespace tfs::common;
-
 namespace tfs
 {
   namespace message
@@ -24,163 +22,164 @@ namespace tfs
     CompactBlockMessage::CompactBlockMessage() :
       preserve_time_(0), block_id_(0)
     {
-      _packetHeader._pcode = COMPACT_BLOCK_MESSAGE;
+      _packetHeader._pcode = common::COMPACT_BLOCK_MESSAGE;
     }
 
     CompactBlockMessage::~CompactBlockMessage()
     {
+
     }
 
-    int CompactBlockMessage::parse(char* data, int32_t len)
+    int CompactBlockMessage::deserialize(common::Stream& input)
     {
-      if (get_int32(&data, &len, &preserve_time_) == TFS_ERROR)
+      int32_t iret = input.get_int32(&preserve_time_);
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_int32( reinterpret_cast<int32_t*> (&block_id_));
       }
-      if (get_int32(&data, &len, reinterpret_cast<int32_t*> (&block_id_)) == TFS_ERROR)
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_int32(&is_owner_);
       }
-      if (get_int32(&data, &len, static_cast<int32_t*> (&is_owner_)) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      return TFS_SUCCESS;
+      return iret;
     }
 
-    int32_t CompactBlockMessage::message_length()
+
+    int64_t CompactBlockMessage::length() const
     {
-      int32_t len = INT_SIZE * 3;
-      return len;
+      return common::INT_SIZE * 3;
     }
 
-    int CompactBlockMessage::build(char* data, int32_t len)
+    int CompactBlockMessage::serialize(common::Stream& output) const 
     {
-      if (set_int32(&data, &len, preserve_time_) == TFS_ERROR)
+      int32_t iret = output.set_int32(preserve_time_);
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = output.set_int32(block_id_);
       }
-      if (set_int32(&data, &len, block_id_) == TFS_ERROR)
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = output.set_int32(is_owner_);
       }
-      if (set_int32(&data, &len, is_owner_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-
-      return TFS_SUCCESS;
+      return iret;
     }
 
-    char* CompactBlockMessage::get_name()
-    {
-      return "compactblockmessage";
-    }
-
-    Message* CompactBlockMessage::create(const int32_t type)
-    {
-      CompactBlockMessage* req_cb_msg = new CompactBlockMessage();
-      req_cb_msg->set_message_type(type);
-      return req_cb_msg;
-    }
-
-    // CompactBlockCompleteMessage 
     CompactBlockCompleteMessage::CompactBlockCompleteMessage() :
-      block_id_(0), success_(COMPACT_COMPLETE_STATUS_SUCCESS), server_id_(0), block_info_(NULL), flag_(0)
+      block_id_(0), success_(common::PLAN_STATUS_END), server_id_(0), flag_(0)
     {
-      _packetHeader._pcode = BLOCK_COMPACT_COMPLETE_MESSAGE;
+      memset(&block_info_, 0, sizeof(block_info_));
+      _packetHeader._pcode = common::BLOCK_COMPACT_COMPLETE_MESSAGE;
     }
 
     CompactBlockCompleteMessage::~CompactBlockCompleteMessage()
     {
     }
 
-    int CompactBlockCompleteMessage::parse(char* data, int32_t len)
+    int CompactBlockCompleteMessage::deserialize(common::Stream& input)
     {
-      if (get_int32(&data, &len, reinterpret_cast<int32_t*> (&block_id_)) == TFS_ERROR)
+      int32_t iret = input.get_int32(reinterpret_cast<int32_t*> (&block_id_));
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_int32(&success_);
       }
-      if (get_int32(&data, &len, reinterpret_cast<int32_t*> (&success_)) == TFS_ERROR)
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_int64(reinterpret_cast<int64_t*>(&server_id_));
       }
-      if (get_int64(&data, &len, reinterpret_cast<int64_t*> (&server_id_)) == TFS_ERROR)
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_int32(reinterpret_cast<int32_t*>(&flag_));
       }
-      if ((len < static_cast<int32_t> (sizeof(uint8_t))) || (len > TFS_MALLOC_MAX_SIZE))
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        iret = input.get_vint64(ds_list_);
       }
-      if (get_int32(&data, &len, reinterpret_cast<int32_t*> (&flag_)) == TFS_ERROR)
+      if (common::TFS_SUCCESS == iret)
       {
-        return TFS_ERROR;
+        int64_t pos = 0;
+        iret = block_info_.deserialize(input.get_data(), input.get_data_length(), pos);
+        if (common::TFS_SUCCESS == iret)
+        {
+          input.drain(block_info_.length());
+        }
       }
-      if (get_vint64(&data, &len, ds_list_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (get_object(&data, &len, reinterpret_cast<void**> (&block_info_), BLOCKINFO_SIZE) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      return TFS_SUCCESS;
+      return iret;
     }
 
-    int32_t CompactBlockCompleteMessage::message_length()
+    int CompactBlockCompleteMessage::deserialize(const char* data, const int64_t data_len, int64_t& pos)
     {
-      int32_t len = INT_SIZE * 4 + INT64_SIZE + BLOCKINFO_SIZE;
-      if (ds_list_.size() > 0)
+      int32_t iret = common::Serialization::get_int32(data, data_len, pos, reinterpret_cast<int32_t*> (&block_id_));
+      if (common::TFS_SUCCESS == iret)
       {
-        len += ds_list_.size() * INT64_SIZE;
+        iret = common::Serialization::get_int32(data, data_len, pos, &success_);
       }
-      return len;
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = common::Serialization::get_int64(data, data_len, pos, reinterpret_cast<int64_t*>(&server_id_));
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = common::Serialization::get_int32(data, data_len, pos, reinterpret_cast<int32_t*>(&flag_));
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = common::Serialization::get_vint64(data, data_len, pos, ds_list_);
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = block_info_.deserialize(data, data_len, pos);
+      }
+      return iret;
     }
 
-    int CompactBlockCompleteMessage::build(char* data, int32_t len)
+    int64_t CompactBlockCompleteMessage::length() const
     {
-      if (block_info_ == NULL)
-      {
-        return TFS_ERROR;
-      }
-      if (set_int32(&data, &len, block_id_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (set_int32(&data, &len, success_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (set_int64(&data, &len, server_id_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (set_int32(&data, &len, flag_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (set_vint64(&data, &len, ds_list_) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      if (set_object(&data, &len, block_info_, BLOCKINFO_SIZE) == TFS_ERROR)
-      {
-        return TFS_ERROR;
-      }
-      return TFS_SUCCESS;
+      return  common::INT_SIZE * 3 + common::INT64_SIZE + block_info_.length() + common::Serialization::get_vint64_length(ds_list_);
     }
 
-    char* CompactBlockCompleteMessage::get_name()
+    int CompactBlockCompleteMessage::serialize(common::Stream& output) const 
     {
-      return "blockwritecompletemessage";
+      int32_t iret = output.set_int32(block_id_);
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = output.set_int32(success_);
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = output.set_int64(server_id_);
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = output.set_int32(flag_);
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        iret = output.set_vint64(ds_list_);
+      }
+      if (common::TFS_SUCCESS == iret)
+      {
+        int64_t pos = 0;
+        iret = block_info_.serialize(output.get_free(), output.get_free_length(), pos);
+        if (common::TFS_SUCCESS == iret)
+        {
+          output.pour(block_info_.length());
+        }
+      }
+      return iret;
     }
-
-    Message* CompactBlockCompleteMessage::create(const int32_t type)
+    void CompactBlockCompleteMessage::dump(void) const
     {
-      CompactBlockCompleteMessage* req_cbc_msg = new CompactBlockCompleteMessage();
-      req_cbc_msg->set_message_type(type);
-      return req_cbc_msg;
+      std::string ipstr;
+      size_t iSize = ds_list_.size();
+      for (size_t i = 0; i < iSize; ++i)
+      {
+        ipstr += tbsys::CNetUtil::addrToString(ds_list_[i]);
+        ipstr += "/";
+      }
+      TBSYS_LOG(DEBUG, "block(%u) success(%d) serverid(%lld) flag(%d) id(%u) version(%u)"
+          "file_count(%u) size(%u) delfile_count(%u) del_size(%u) seqno(%u), ds_list(%u), dataserver(%s)",
+          block_id_, success_, server_id_, flag_, block_info_.block_id_, block_info_.version_, block_info_.file_count_, block_info_.size_,
+          block_info_.del_file_count_, block_info_.del_size_, block_info_.seq_no_, ds_list_.size(), ipstr.c_str());
     }
   }
 }

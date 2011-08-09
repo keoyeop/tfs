@@ -44,9 +44,9 @@ namespace tfs
         }
 
       public:
-        int format_block_file_system(const common::SysParam::FileSystemParam& fs_param);
-        int clear_block_file_system(const common::SysParam::FileSystemParam& fs_param);
-        int bootstrap(const common::SysParam::FileSystemParam& fs_param);
+        int format_block_file_system(const common::FileSystemParameter& fs_param);
+        int clear_block_file_system(const common::FileSystemParameter& fs_param);
+        int bootstrap(const common::FileSystemParameter& fs_param);
 
         int new_block(const uint32_t logic_block_id, uint32_t& physical_block_id, const BlockType block_type =
             C_MAIN_BLOCK);
@@ -56,17 +56,18 @@ namespace tfs
 
         LogicBlock* get_logic_block(const uint32_t logic_block_id, const BlockType block_type = C_MAIN_BLOCK);
         int get_all_logic_block(std::list<LogicBlock*>& logic_block_list, const BlockType block_type = C_MAIN_BLOCK);
+        int64_t get_all_logic_block_size(const BlockType block_type = C_MAIN_BLOCK);
         int get_logic_block_ids(common::VUINT& logic_block_ids, const BlockType block_type = C_MAIN_BLOCK);
         int get_all_physic_block(std::list<PhysicalBlock*>& physic_block_list);
 
         //status info
-        int query_super_block(SuperBlock& super_block_info);
+        int query_super_block(common::SuperBlock& super_block_info);
         int query_approx_block_count(int32_t& block_count) const;
         int query_bit_map(char** bit_map_buffer, int32_t& bit_map_len, int32_t& set_count, const BitMapType bitmap_type =
             C_ALLOCATE_BLOCK);
         int query_space(int64_t& used_bytes, int64_t& total_bytes) const;
 
-        int load_super_blk(const common::SysParam::FileSystemParam& fs_param);
+        int load_super_blk(const common::FileSystemParameter& fs_param);
 
         int switch_compact_blk(const uint32_t block_id);
         int expire_compact_blk(const time_t time, std::set<uint32_t>& erase_blocks);
@@ -83,7 +84,7 @@ namespace tfs
 
         int load_block_file();
 
-        int init_super_blk_param(const common::SysParam::FileSystemParam& fs_param);
+        int init_super_blk_param(const common::FileSystemParameter& fs_param);
         void calc_block_count(const int64_t avail_data_space, int32_t& main_block_count, int32_t& ext_block_count);
         int create_fs_super_blk();
         int create_fs_dir();
@@ -115,7 +116,7 @@ namespace tfs
         int bit_map_size_;      // bitmap size
         BitMap* normal_bit_map_; // normal bitmap
         BitMap* error_bit_map_;  // error bitmap
-        SuperBlock super_block_; // super block
+        common::SuperBlock super_block_; // super block
         SuperBlockImpl* super_block_impl_; // super block implementation handle
         common::RWLock rw_lock_;           // read-write lock
     };

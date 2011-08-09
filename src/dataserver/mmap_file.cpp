@@ -35,7 +35,7 @@ namespace tfs
     {
     }
 
-    MMapFile::MMapFile(const MMapOption& mmap_option, const int fd) :
+    MMapFile::MMapFile(const common::MMapOption& mmap_option, const int fd) :
       size_(0), fd_(fd), data_(NULL)
     {
       mmap_file_option_.max_mmap_size_ = mmap_option.max_mmap_size_;
@@ -71,7 +71,7 @@ namespace tfs
       return true;
     }
 
-    bool MMapFile::map_file(bool write)
+    bool MMapFile::map_file(const bool write)
     {
       int flags = PROT_READ;
 
