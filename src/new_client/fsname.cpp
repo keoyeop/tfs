@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: fsname.cpp 19 2010-10-18 05:48:09Z nayan@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>

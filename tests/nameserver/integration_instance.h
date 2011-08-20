@@ -8,7 +8,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: integration_instance.h 2090 2011-02-16 06:52:58Z duanfei $
+ * Version: $Id$
  *
  * Authors:
  *   duanfei<duanfei@taobao.com>

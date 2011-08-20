@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: main.cpp 495 2011-06-14 08:47:12Z nayan@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   nayan <nayan@taobao.com>

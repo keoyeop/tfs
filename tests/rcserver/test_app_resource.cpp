@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: test_bit_map.cpp 5 2010-09-29 07:44:56Z duanfei@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *    daoan(daoan@taobao.com)

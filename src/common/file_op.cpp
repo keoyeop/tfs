@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: file_op.cpp 33 2010-11-01 05:24:35Z nayan@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>

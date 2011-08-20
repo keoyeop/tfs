@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: fsname.h 5 2010-09-29 07:44:56Z duanfei@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>

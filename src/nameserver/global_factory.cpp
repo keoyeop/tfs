@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: global_factory.cpp 2139 2011-03-28 09:15:26Z duanfei $
+ * Version: $Id$
  *
  * Authors:
  *   duanfei <duanfei@taobao.com>

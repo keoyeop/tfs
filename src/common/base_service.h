@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: base_service.h 185 2011-04-21 14:44:43Z duanfei@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   duanfei<duanfei@taobao.com>

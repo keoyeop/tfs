@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: dump_plan_message.cpp 1990 2010-12-24 08:41:05Z duanfei $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>

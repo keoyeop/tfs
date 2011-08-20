@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: unlink_file_message.h 381 2011-05-30 08:07:39Z nayan@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>

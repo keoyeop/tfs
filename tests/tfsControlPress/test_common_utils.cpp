@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: test_common_utils.cpp 155 2011-07-26 14:33:27Z mingyan.zc@taobao.com $
+ * Version: $Id$
  *
  * Authors:
  *   mingyan.zc@taobao.com

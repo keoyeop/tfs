@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: dump_plan_message.h 2135 2011-03-25 06:57:01Z duanfei $
+ * Version: $Id$
  *
  * Authors:
  *   duanfei<duanfei@taobao.com>

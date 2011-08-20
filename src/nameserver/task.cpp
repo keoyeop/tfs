@@ -6,7 +6,7 @@
  * published by the Free Software Foundation.
  *
  *
- * Version: $Id: task.cpp 2139 2011-03-28 09:15:26Z duanfei $
+ * Version: $Id$
  *
  * Authors:
  *   duolong <duolong@taobao.com>
