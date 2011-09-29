@@ -49,6 +49,9 @@ namespace tfs
       int32_t dump_stat_info_interval_;
       int32_t build_plan_default_wait_time_;
       int32_t balance_max_diff_block_num_;
+      int32_t group_seq_;
+      int32_t group_count_;
+      double  balance_percent_;
 
       static NameServerParameter ns_parameter_;
       static NameServerParameter& instance()
@@ -101,6 +104,8 @@ namespace tfs
       int32_t max_eio_error_nums_;
       int32_t expire_check_block_time_;
       int32_t max_cpu_usage_;
+      int32_t object_dead_max_time_;
+      int32_t object_clear_max_time_;
       int32_t dump_stat_info_interval_;
       static std::string get_real_file_name(const std::string& src_file, 
           const std::string& index, const std::string& suffix);
@@ -130,10 +135,34 @@ namespace tfs
       }
     };
 
+    struct NameMeatServerParameter
+    {
+      struct DbInfo
+      {
+        DbInfo():hash_value_(0)
+        {
+        }
+        std::string conn_str_;
+        std::string user_;
+        std::string passwd_;
+        int32_t hash_value_;
+      };
+      int initialize(void);
+      std::vector<DbInfo> db_infos_;
+      int32_t max_pool_size_;
+
+      static NameMeatServerParameter meta_parameter_;
+      static NameMeatServerParameter& instance()
+      {
+        return meta_parameter_;
+      }
+    };
+
 #define SYSPARAM_NAMESERVER NameServerParameter::instance()
 #define SYSPARAM_DATASERVER DataServerParameter::instance()
 #define SYSPARAM_FILESYSPARAM FileSystemParameter::instance()
 #define SYSPARAM_RCSERVER RcServerParameter::instance()
+#define SYSPARAM_NAMEMETASERVER NameMeatServerParameter::instance()
   }/** common **/
 }/** tfs **/
 #endif //TFS_COMMON_SYSPARAM_H_

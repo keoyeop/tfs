@@ -33,6 +33,7 @@ namespace tfs
     FileSystemParameter FileSystemParameter::fs_parameter_;
     DataServerParameter DataServerParameter::ds_parameter_;
     RcServerParameter RcServerParameter::rc_parameter_;
+    NameMeatServerParameter NameMeatServerParameter::meta_parameter_;
 
     int NameServerParameter::initialize(void)
     {
@@ -141,6 +142,21 @@ namespace tfs
       balance_max_diff_block_num_ = TBSYS_CONFIG.getInt(CONF_SN_NAMESERVER, CONF_BALANCE_MAX_DIFF_BLOCK_NUM, 5);//s
       if (balance_max_diff_block_num_ <= 0)
         balance_max_diff_block_num_ = 5;
+      const char* percent = TBSYS_CONFIG.getString(CONF_SN_NAMESERVER, CONF_BALANCE_PERCENT,"0.00001");
+      balance_percent_ = strtod(percent, NULL);
+      group_count_ = TBSYS_CONFIG.getInt(CONF_SN_NAMESERVER, CONF_GROUP_COUNT, 1);
+      if (group_count_ < 0)
+      {
+        TBSYS_LOG(ERROR, "%s in [%s] is invalid, value: %d", CONF_GROUP_COUNT, CONF_SN_NAMESERVER, group_count_);
+        return EXIT_SYSTEM_PARAMETER_ERROR;
+      }
+      group_seq_ = TBSYS_CONFIG.getInt(CONF_SN_NAMESERVER, CONF_GROUP_SEQ, 0);
+      if ((group_seq_ < 0) 
+        || (group_seq_ >= group_count_))
+      {
+        TBSYS_LOG(ERROR, "%s in [%s] is invalid, value: %d", CONF_GROUP_SEQ, CONF_SN_NAMESERVER, group_seq_);
+        return EXIT_SYSTEM_PARAMETER_ERROR;
+      }
       return TFS_SUCCESS;
     }
 
@@ -191,6 +207,12 @@ namespace tfs
         = TBSYS_CONFIG.getInt(CONF_SN_DATASERVER, CONF_EXPIRE_CHECKBLOCK_TIME, 86400);
       max_cpu_usage_ = TBSYS_CONFIG.getInt(CONF_SN_DATASERVER, CONF_MAX_CPU_USAGE, 60);
       dump_stat_info_interval_ = TBSYS_CONFIG.getInt(CONF_SN_DATASERVER, CONF_DUMP_STAT_INFO_INTERVAL, 60000000);
+      object_dead_max_time_ = TBSYS_CONFIG.getInt(CONF_SN_DATASERVER, CONF_OBJECT_DEAD_MAX_TIME, 86400);
+      if (object_dead_max_time_ <=  0)
+        object_dead_max_time_ = 86400;
+      object_clear_max_time_ = TBSYS_CONFIG.getInt(CONF_SN_DATASERVER, CONF_OBJECT_CLEAR_MAX_TIME, 300);
+      if (object_clear_max_time_ <= 0)
+        object_clear_max_time_ = 300;
       return SYSPARAM_FILESYSPARAM.initialize(index);
     }
 
@@ -278,6 +300,37 @@ namespace tfs
       stat_interval_ = TBSYS_CONFIG.getInt(CONF_SN_RCSERVER, CONF_RC_STAT_INTERVAL, 120);
       update_interval_ = TBSYS_CONFIG.getInt(CONF_SN_RCSERVER, CONF_RC_UPDATE_INTERVAL, 30);
       return TFS_SUCCESS;
+    }
+
+    int NameMeatServerParameter::initialize(void)
+    {
+      int ret = TFS_SUCCESS;
+      max_pool_size_ = TBSYS_CONFIG.getInt(CONF_SN_NAMEMETASERVER, CONF_MAX_SPOOL_SIZE, 10);
+      std::string db_infos = TBSYS_CONFIG.getString(CONF_SN_NAMEMETASERVER, CONF_META_DB_INFOS, "");
+      std::vector<std::string> fields;
+      Func::split_string(db_infos.c_str(), ';', fields);
+      TBSYS_LOG(DEBUG, "fields.size = %d", fields.size());
+      for (size_t i = 0; i < fields.size(); i++)
+      {
+        std::vector<std::string> items;
+        Func::split_string(fields[i].c_str(), ',', items);
+        TBSYS_LOG(DEBUG, "items.size = %d", items.size());
+        DbInfo tmp_db_info;
+        if (items.size() >= 3)
+        {
+          tmp_db_info.conn_str_ = items[0];
+          tmp_db_info.user_ = items[1];
+          tmp_db_info.passwd_ = items[2];
+          tmp_db_info.hash_value_ = db_infos_.size();
+          db_infos_.push_back(tmp_db_info);
+        }
+      }
+      if (db_infos_.size() == 0)
+      {
+        TBSYS_LOG(ERROR, "can not find dbinfos");
+        ret = TFS_ERROR;
+      }
+      return ret;
     }
   }/** common **/
 }/** tfs **/

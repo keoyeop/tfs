@@ -104,6 +104,10 @@ namespace tfs
         static const int32_t INDEXFILE_SAFE_MULT = 4;
         static const int32_t INNERFILE_MAX_MULTIPE = 30;
 
+#if defined(TFS_DS_GTEST)
+      public:
+#else
+#endif
         typedef std::map<uint32_t, LogicBlock*> LogicBlockMap;
         typedef LogicBlockMap::iterator LogicBlockMapIter;
         typedef std::map<uint32_t, PhysicalBlock*> PhysicalBlockMap;
@@ -111,7 +115,7 @@ namespace tfs
 
         LogicBlockMap logic_blocks_; // logic blocks
         LogicBlockMap compact_logic_blocks_; // compact logic blocks
-        PhysicalBlockMap physcial_blocks_;   // physcial blocks
+        PhysicalBlockMap physical_blocks_;   // physical blocks
 
         int bit_map_size_;      // bitmap size
         BitMap* normal_bit_map_; // normal bitmap

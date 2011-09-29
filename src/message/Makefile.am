@@ -13,7 +13,8 @@ HEADER=dump_plan_message.h client_cmd_message.h heart_message.h\
 			 create_filename_message.h server_status_message.h dataserver_message.h\
 			 close_file_message.h read_data_message.h write_data_message.h\
 			 block_info_message.h admin_cmd_message.h rc_session_message.h\
-			 message_factory.h get_dataserver_information_message.h
+			 message_factory.h get_dataserver_information_message.h\
+			 meta_nameserver_client_message.h meta_nameserver_client_message.h
 libtfsmessage_a_SOURCES = dump_plan_message.cpp client_cmd_message.cpp heart_message.cpp\
 													oplog_sync_message.cpp crc_error_message.cpp reload_message.cpp\
 													unlink_file_message.cpp file_info_message.cpp rollback_message.cpp\
@@ -21,7 +22,8 @@ libtfsmessage_a_SOURCES = dump_plan_message.cpp client_cmd_message.cpp heart_mes
 													create_filename_message.cpp server_status_message.cpp dataserver_message.cpp\
 													close_file_message.cpp read_data_message.cpp write_data_message.cpp\
 													block_info_message.cpp admin_cmd_message.cpp rc_session_message.cpp\
-													message_factory.cpp get_dataserver_information_message.cpp $(HEADER)
+													message_factory.cpp get_dataserver_information_message.cpp \
+													meta_nameserver_client_message.cpp $(HEADER)
 
 libtfsmessage_a_CPPFLAGS = $(AM_CPPFLAGS)
 

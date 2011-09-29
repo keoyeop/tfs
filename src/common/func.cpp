@@ -313,21 +313,21 @@ namespace tfs
 
     uint64_t Func::get_host_ip(const char *s)
     {
-     char addr[100];
-     strncpy(addr, s, 100);
-     addr[99] = '\0';
-     char* pos = strchr(addr, ':');
+      char addr[100];
+      strncpy(addr, s, 100);
+      addr[99] = '\0';
+      char* pos = strchr(addr, ':');
 
-     if (pos)
-     {
-         *pos++ = '\0';
-     }
-     else
-     {
-       return 0;
-     }
+      if (pos)
+      {
+          *pos++ = '\0';
+      }
+      else
+      {
+        return 0;
+      }
 
-     return Func::str_to_addr(addr, atoi(pos));
+      return Func::str_to_addr(addr, atoi(pos));
     }
 
     // convert to lower
@@ -544,18 +544,18 @@ namespace tfs
         p = strchr(start, del);
         if (p != NULL)
         {
-          memset(buffer, 0, BUFSIZ);
+          //memset(buffer, 0, BUFSIZ);
+          assert(p - start < BUFSIZ);
           strncpy(buffer, start, p - start);
-          if (strlen(buffer) > 0)
+          buffer[p - start] = 0;
+          if (buffer[0] != '\0')
             fields.push_back(buffer);
           start = p + 1;
         }
         else
         {
-          memset(buffer, 0, BUFSIZ);
-          strcpy(buffer, start);
-          if (strlen(buffer) > 0)
-            fields.push_back(buffer);
+          if (start[0] != '\0')
+            fields.push_back(start);
           break;
         }
       }
@@ -684,7 +684,7 @@ namespace tfs
               addrstr, hexstr);
       }
     }
- 
+
 
   }
 }

@@ -28,6 +28,7 @@ namespace tfs
 #define CONF_SN_ADMINSERVER                           "adminserver"
 #define CONF_SN_MOCK_DATASERVER                       "mockdataserver"
 #define CONF_SN_RCSERVER                              "rcserver"
+#define CONF_SN_NAMEMETASERVER                        "metaserver"
 
 #define CONF_CLUSTER_ID                               "cluster_id"
 #define CONF_LOCK_FILE                                "lock_file"
@@ -47,6 +48,8 @@ namespace tfs
 #define CONF_HEART_INTERVAL                           "heart_interval"
 #define CONF_HEART_MAX_QUEUE_SIZE                     "heart_max_queue_size"
 #define CONF_HEART_THREAD_COUNT												"heart_thread_count"
+#define CONF_REPORT_BLOCK_THREAD_COUNT                "report_block_thread_count"
+#define CONF_REPORT_BLOCK_MAX_QUEUE_SIZE              "report_block_max_queue_size"
 #define CONF_MAX_REPLICATION                          "max_replication"
 #define CONF_MIN_REPLICATION                          "min_replication"
 #define CONF_USE_CAPACITY_RATIO                       "use_capacity_ratio"
@@ -91,9 +94,14 @@ namespace tfs
 #define CONF_CLEANUP_LEASE_THRESHOLD                  "cleanup_lease_threshold"
 
 #define CONF_BALANCE_MAX_DIFF_BLOCK_NUM               "balance_max_diff_block_num"
+#define CONF_BALANCE_PERCENT                          "balance_percent"
 
 
 #define CONF_DUMP_STAT_INFO_INTERVAL                  "dump_stat_info_interval"
+
+#define CONF_GROUP_SEQ                                "group_seq"
+#define CONF_GROUP_COUNT                              "group_count"
+#define CONF_TIME_REPORT_BLOCK_INTERVAL               "time_report_block_interval" //
 
   //dataserver
 #define CONF_DATA_THREAD_COUNT                        "data_thread_count"
@@ -138,6 +146,10 @@ namespace tfs
 #define CONF_RC_DB_INFO                               "rc_db_info"
 #define CONF_RC_DB_USER                               "rc_db_user"
 #define CONF_RC_DB_PWD                                "rc_db_pwd"
+
+//name_meta_server
+#define CONF_MAX_SPOOL_SIZE                            "max_spool_size"
+#define CONF_META_DB_INFOS                             "meta_db_infos"
   }
 }
 #endif //TFS_COMMON_CONFDEFINE_H_

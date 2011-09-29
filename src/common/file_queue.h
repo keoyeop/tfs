@@ -66,8 +66,6 @@ namespace tfs
 
       QueueItem *pop(const int32_t index = 0);
 
-      //QueueItem *pop(int32_t& offset, const int32_t index);
-
       int clear();
 
       bool empty() const;
@@ -109,6 +107,10 @@ namespace tfs
       int open_write_file();
       int open_read_file();
       int delete_read_file();
+#if defined(TFS_DS_GTEST)
+    public:
+#else
+#endif
       int write_header();
       int recover_record();
 
@@ -116,6 +118,10 @@ namespace tfs
       int32_t read_fd_;
       int32_t write_fd_;
       int32_t information_fd_;
+#if defined(TFS_DS_GTEST)
+    public:
+#else
+#endif
       QueueInformationHeader queue_information_header_;
       int32_t max_file_size_;
       bool delete_file_flag_;

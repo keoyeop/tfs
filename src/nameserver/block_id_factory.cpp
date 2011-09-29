@@ -112,6 +112,7 @@ namespace tfs
           count_ = 0;
         }
       }
+#if !defined(TFS_NS_GTEST)
       if (update_flag)
       {
         int32_t iret = update(ret_id);
@@ -121,6 +122,7 @@ namespace tfs
           ret_id = INVALID_BLOCK_ID;
         }
       }
+#endif
       return ret_id;
     }
 
@@ -135,6 +137,7 @@ namespace tfs
         int32_t offset = 0;
         int32_t length = 0;
         int32_t count  = 0;
+        ::lseek(fd_, 0, SEEK_SET);
         do
         {
           ++count;
